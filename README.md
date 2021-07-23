@@ -98,6 +98,7 @@ hafeZ is currently only optimised to use paired end illumina reads as inputs. Fu
 
 If you publish results from hafeZ please cite the following:
 
-doi.org/some.preprint
+hafeZ: Active prophage identification through read mapping (bioRxiv)
+https://doi.org/10.1101/2021.07.21.453177
 
 https://github.com/Chrisjrt/hafeZ

@@ -16,7 +16,7 @@ import multiprocessing
 from functools import partial
 import hZ.misc_functions
 import itertools
-
+import os
 
 def join_ROIs(roi_df):
     print('\n{:#^50}'.format(' Merging close regions of interest '))
@@ -905,3 +905,67 @@ def keep_only_x_best(roi_df,keep_threshold):
     end_time = '{:.2f}'.format(time.time() - start_time)
     print('{:#^50}'.format(' Done: ' + end_time + ' seconds '))
     return roi_df
+
+def split_df_for_multiproc_phrogs(lst,threads):
+    chunks = round(len(lst)/threads)
+    chunks = [lst[i:i + chunks] for i in range(0, len(lst), chunks)]
+    pool = multiprocessing.Pool(processes=threads)
+    return chunks, pool
+
+def hhblits_func(chunk, path, out):
+    for i in chunk:
+        name = i.id
+        i.id = '~'.join(i.id.split('~')[-2:])
+        fasta_seq = ">{}\n{}".format(i.id, i.seq)
+        subprocess.run(['hhblits', 
+                        '-i', 'stdin',
+                        '-blasttab', out + '/temp_' + i.id + '.tab',
+                        '-n', '1',
+                        '-cpu', '1',
+                        '-d', path + '/phrogs', 
+                        '-v', '0'], input = fasta_seq.encode('utf-8'), stdout=subprocess.DEVNULL)
+        df = pd.read_csv(out + '/temp_' + i.id + '.tab', sep='\t',  usecols = [0,1,10], names = ['orf','phrog','e'])
+        df = df.iloc[df.groupby(['orf'])['e'].idxmin()].reset_index(drop=True)
+        df.loc[0, 'orf'] = name 
+        df['orf_no'] = df['orf'].str.split('~').str[-1]
+        df.to_csv(out + '/temp_' + i.id + '.tab', sep='\t', index=False, header=False)
+
+def hhblits_phrogs(output_folder, threads, db_path):
+    print('\n{:#^50}'.format(' Screening orfs vs pVOGs HMM files '))
+    start_time = time.time()
+    aa_file = output_folder + '/temp_aa.fasta'
+    hhblits_out = output_folder + '/temp_hmmout.txt'
+    hhblits_db_path = db_path + 'phrogs_hhsuite_db'
+    hhblits_table_path = db_path + '/phrogs_table_almostfinal_plusGO_wNA_utf8.tsv'
+    aa_list = []
+    for i in SeqIO.parse(aa_file, 'fasta'):
+        aa_list.append(i)
+    chunks, pool = split_df_for_multiproc_phrogs(aa_list,threads)
+    pool.map(partial(hhblits_func, path = hhblits_db_path, out = output_folder), chunks)
+    os.system("cat {}/temp_*orf*.tab > {}/temp_hmms.tab".format(output_folder,output_folder))
+    df = pd.read_csv(output_folder + '/temp_hmms.tab', sep='\t',  names = ['orf','phrog','e','orf_no'])
+    df = df.sort_values(by='orf_no')
+    for index, row in df.iterrows():
+        if row['e'] > 0.00001:
+            df.loc[index, 'e'] = np.nan
+    end_time = '{:.2f}'.format(time.time() - start_time)
+    print('{:#^50}'.format(' Done: ' + end_time + ' seconds '))
+    return df
+
+def calc_phrogs_frac(hmm_df,roi_df,frac_pvog):
+    print('\n{:#^50}'.format(' Calculating fraction of orfs hit by pVOGs '))
+    start_time = time.time()
+    hmm_df['prophage'] = hmm_df['orf'].str.split('~').str[:-1].str.join('~')
+    hmm_hit = hmm_df[~np.isnan(hmm_df['e'])]
+    hmm_counts = hmm_hit['prophage'].value_counts().reset_index()
+    hmm_counts.columns = ['roi','hmm']
+    frac_df = pd.merge(roi_df,hmm_counts,on='roi', how = 'left')
+    frac_df['frac_pvog'] = frac_df['hmm']/frac_df['orf_count']
+    df = pd.merge(roi_df,frac_df[['roi','frac_pvog']], on ='roi', how = 'left')
+    df['frac_pvog'] = df['frac_pvog'].copy().fillna(0)
+    df = df[df['frac_pvog'] >= frac_pvog]
+    end_time = '{:.2f}'.format(time.time() - start_time)
+    print('{:#^50}'.format(' Done: ' + end_time + ' seconds '))
+    if len(df) < 1:
+        return 'exit'
+    return df

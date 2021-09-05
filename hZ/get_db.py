@@ -32,10 +32,9 @@ def unpack_dbs(db_folder,filename):
     tar.close()
     os.remove(db_folder + '/' + filename)
 
-def get_dbs(db_folder):
+def get_dbs_pvogs(db_folder):
     print('\n{:#^50}'.format(' Downloading pVOGs files '))
     start_time = time.time()
-    os.makedirs(db_folder, exist_ok=False)
     HMMs = 'http://dmk-brain.ecn.uiowa.edu/pVOGs/downloads/All/AllvogHMMprofiles.tar.gz' # url for pVOGs HMMs
     VOG_tables = 'http://dmk-brain.ecn.uiowa.edu/pVOGs/downloads/All/Allvogtables.tar.gz' # url for pVOGs tables
     urls = [HMMs, VOG_tables]
@@ -51,7 +50,7 @@ def get_dbs(db_folder):
     end_time = '{:.2f}'.format(time.time() - start_time)
     print('\n{:#^50}'.format(' Done: ' + end_time + ' seconds '))
 
-def process_vogsTable(db_folder):
+def process_vogsTable_pvogs(db_folder):
     print('\n{:#^50}'.format(' Processing pVOGs table '))
     start_time = time.time()
     df_list = []
@@ -70,7 +69,7 @@ def process_vogsTable(db_folder):
     print('\n{:#^50}'.format(' Done: ' + end_time + ' seconds '))
     df_list.to_csv(db_folder + '/combined_Allvogtables.txt')
 
-def process_vogsHMM(db_folder):
+def process_vogsHMM_pvogs(db_folder):
     print('\n{:#^50}'.format(' Pressing pVOGs HMMs '))
     start_time = time.time()
     db_folder = db_folder + '/combined_AllvogHMMprofiles.hmm'
@@ -78,3 +77,62 @@ def process_vogsHMM(db_folder):
                     db_folder])
     end_time = '{:.2f}'.format(time.time() - start_time)
     print('\n{:#^50}'.format(' Done: ' + end_time + ' seconds '))
+
+
+
+
+
+
+
+
+
+
+
+def get_dbs_phrogs(db_folder):
+    print('\n{:#^50}'.format(' Downloading PHROGs files '))
+    start_time = time.time()
+    HMMs = 'https://phrogs.lmge.uca.fr/downloads_from_website/phrogs_hhsuite_db.tar.gz' # url for pVOGs HMMs
+    VOG_tables = 'https://phrogs.lmge.uca.fr/phrog_table/phrogs_table_almostfinal_plusGO_wNA_utf8.tsv' # url for pVOGs tables
+    urls = [HMMs, VOG_tables]
+    counter = 1
+    for i in urls:
+        print('\nGetting file {}/{}:\n'.format(counter,len(urls)))
+        get_file(i,i.split("/")[-1],db_folder)
+        print('\nunpacking the file\n')
+        counter = counter + 1
+    unpack_dbs(db_folder,'phrogs_hhsuite_db.tar.gz')
+    # os.system("mv {}/phrogs_hhsuite_db/* {}/phrog_combined_AllvogHMMprofiles.hhm".format(db_folder,db_folder))
+    # shutil.rmtree(db_folder + 'phrogs_hhsuite_db.tar')
+    end_time = '{:.2f}'.format(time.time() - start_time)
+    print('\n{:#^50}'.format(' Done: ' + end_time + ' seconds '))
+
+# def process_vogsTable_phrogs(db_folder):
+#     print('\n{:#^50}'.format(' Processing pVOGs table '))
+#     start_time = time.time()
+#     df_list = []
+#     for f in glob.glob(db_folder + '/Allvogtables/VOG*.txt'):
+#         with open(f,'r') as i:
+#             VOG = i.readline().split(':')[0][1:]
+#         df = pd.read_csv(f,sep='\t',comment='#', names = ('type','phage_name','genome_acc','prot_acc','coords','length','description'))
+#         df['vog'] = VOG
+#         df_list.append(df)
+#     df_list = pd.concat(df_list).reset_index(drop=True)
+#     df_list = df_list.groupby('vog')[['type','phage_name', 'description']].agg(lambda x: x.tolist()).reset_index()
+#     df_list['description'] = df_list.vog.map(df_list.groupby('vog')['description'].sum().apply(np.unique))
+#     df_list['type'] = df_list.vog.map(df_list.groupby('vog')['type'].sum().apply(np.unique))
+#     shutil.rmtree(db_folder + '/Allvogtables/')
+#     end_time = '{:.2f}'.format(time.time() - start_time)
+#     print('\n{:#^50}'.format(' Done: ' + end_time + ' seconds '))
+#     df_list.to_csv(db_folder + '/combined_Allvogtables.txt')
+
+# def process_vogsHMM_phrogs(db_folder):
+#     print('\n{:#^50}'.format(' Pressing pVOGs HMMs '))
+#     start_time = time.time()
+#     db_folder = db_folder + '/phrog_combined_AllvogHMMprofiles.hmm'
+#     subprocess.run(['hmmpress',
+#                     db_folder])
+#     end_time = '{:.2f}'.format(time.time() - start_time)
+#     print('\n{:#^50}'.format(' Done: ' + end_time + ' seconds '))
+
+
+###### for hhblits will need to iterate through all aa sequences and run each 1 by one... best way to do this is to run 1 thread per seq but run multiple seqs at the same time

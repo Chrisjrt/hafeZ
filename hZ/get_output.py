@@ -145,3 +145,27 @@ def clean_up(output_folder):
         os.remove(f)
     end_time = '{:.3f}'.format(time.time() - start_time)
     print('{:#^50}'.format(' Done: ' + end_time + ' seconds '))
+
+
+def output_hmm_table_phrogs(roi_df,output_folder,db_path):
+    print('\n{:#^50}'.format(' Outputting hmm hit table '))
+    start_time = time.time()
+    df = pd.read_csv(output_folder + '/temp_hmms.tab', sep='\t', names = ['orf','vog_no','e_value','orf_no'])    
+    df = df[df['orf'].str.split('~').str[:-1].str.join('~').isin(list(roi_df['roi']))]
+    phrogs_db = pd.read_csv(db_path + '/phrogs_table_almostfinal_plusGO_wNA_utf8.tsv', sep='\t', usecols = [0,6],  names=['phrog','category'])
+    phrogs_db['phrog'] = 'phrog_' + phrogs_db['phrog'].astype(str)
+    for index, row in df.iterrows():
+        old = '~'.join(row['orf'].split('~')[:-1])
+        df.loc[index, 'orf'] = roi_df['roi_new'][roi_df['roi'] == old].iloc[0]
+        if row['e_value'] > 0.00001:
+            df.loc[index, 'vog_no'] = np.nan 
+            df.loc[index, 'e_value'] = np.nan
+        df.loc[index, 'number'] = int(row['orf_no'].split('_')[-1])
+        df.loc[index,'vog_description'] = phrogs_db['category'][phrogs_db['phrog'] == row['vog_no']].iloc[0]
+    df.columns = ['roi','vog_no','e_value','orf_no','number','vog_description']
+    df = df.sort_values(by=['roi','number'])
+    df = df[['roi','orf_no','vog_no','e_value','vog_description']]
+    df = df.reset_index(drop=True)
+    df.to_csv(output_folder + '/hafeZ_hmm_hits.tsv', sep='\t', index=False)
+    end_time = '{:.3f}'.format(time.time() - start_time)
+    print('{:#^50}'.format(' Done: ' + end_time + ' seconds '))

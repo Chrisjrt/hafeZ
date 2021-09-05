@@ -58,6 +58,12 @@ def main():
         nargs = '?',
         help = 'use this option to get and format pVOGs database in the given directory',
         required = False)
+    setup.add_argument(
+        '-T', '--db_type',
+        metavar = 'db',
+        nargs = '?',
+        help = 'choose which database you want to download, currently available ones are pVOGs or PHROGs',
+        required = False)
 
     #### add arguments required for running hafeZ ####
     required = parser.add_argument_group('required arguments for running hafeZ')
@@ -246,6 +252,11 @@ def main():
         print('hafeZ: error: either --get_db or --db_path options must be used and should contain a path')
         sys.exit(0)
 
+    if args.db_type is None or args.db_type.lower() not in ['pvogs','phrogs']:
+        parser.print_help()
+        print('hafeZ: error: desired --db_type must be given, currently it hasnt been set properly')
+        sys.exit(0)
+
      # check memory limit has been given properly
     args.memory_limit = args.memory_limit.upper()
     if not any(x in args.memory_limit for x in ['K','G','M']):
@@ -270,10 +281,22 @@ def main():
     #### get pvogs db if needed ####
 
     if args.get_db != None:
-         hZ.get_db.get_dbs(args.get_db)
-         hZ.get_db.process_vogsTable(args.get_db)
-         hZ.get_db.process_vogsHMM(args.get_db)
-         args.db_path = args.get_db
+        if not os.path.exists(args.get_db):
+            os.makedirs(args.get_db, exist_ok=False)
+        if args.db_type.lower() == "pvogs":
+            hZ.get_db.get_dbs_pvogs(args.get_db)
+            hZ.get_db.process_vogsTable_pvogs(args.get_db)
+            hZ.get_db.process_vogsHMM_pvogs(args.get_db)
+        elif args.db_type.lower() == "phrogs":
+            hZ.get_db.get_dbs_phrogs(args.get_db)
+            # hZ.get_db.process_vogsTable_phrogs(args.get_db)
+            # hZ.get_db.process_vogsHMM_phrogs(args.get_db)
+        else:
+            parser.print_help()
+            print('hafeZ: error: --db_type given is not recognised, see help for available databases')
+            sys.exit(0)
+
+        args.db_path = args.get_db
 
     #### check that all arguments have been given for running
 
@@ -520,26 +543,38 @@ def main():
             print('{:#^50}'.format(''))
             sys.exit(0)
 
-        ### Screen all roi genes vs pvogs db ####
-
-        hmm_df = hZ.process_rois.hmm_scan(args.output_folder, args.threads, args.db_path)
-
-
-        ### calculate fraction of orfs hit by pVOGs ####
-
-        roi_df = hZ.process_rois.calc_pVOGs_frac(hmm_df,roi_df,args.pvog_fract)
-        if isinstance(roi_df, str):
-            hZ.get_output.output_no_roi(args.output_folder)
-            hZ.get_output.clean_up(args.output_folder)
-            if args.all_Zscores == True:
-                hZ.get_output.output_contig_Z(depths,args.output_folder,median, mad)
-            run_end_time = '{:.2f}'.format(time.time() - run_start_time)
-            print('\n{:#^50}'.format(''))
-            print('{:#^50}'.format(' hafeZ run complete! '))
-            print('{:#^50}'.format(' Total run time: ' + run_end_time + ' seconds '))
-            print('{:#^50}'.format(''))
-            sys.exit(0)
-
+        if args.db_type.lower() == 'pvogs':
+            ### Screen all roi genes vs pvogs db ####
+            hmm_df = hZ.process_rois.hmm_scan(args.output_folder, args.threads, args.db_path)
+            ### calculate fraction of orfs hit by pVOGs ####
+            roi_df = hZ.process_rois.calc_pVOGs_frac(hmm_df,roi_df,args.pvog_fract)
+            if isinstance(roi_df, str):
+                hZ.get_output.output_no_roi(args.output_folder)
+                hZ.get_output.clean_up(args.output_folder)
+                if args.all_Zscores == True:
+                    hZ.get_output.output_contig_Z(depths,args.output_folder,median, mad)
+                run_end_time = '{:.2f}'.format(time.time() - run_start_time)
+                print('\n{:#^50}'.format(''))
+                print('{:#^50}'.format(' hafeZ run complete! '))
+                print('{:#^50}'.format(' Total run time: ' + run_end_time + ' seconds '))
+                print('{:#^50}'.format(''))
+                sys.exit(0)
+        elif args.db_type.lower() == 'phrogs':
+            #### Screen all roi genes vs phrogs db ####
+            hmm_df = hZ.process_rois.hhblits_phrogs(args.output_folder, args.threads, args.db_path)
+            #### calculate fraction of orfs hit by phrogs ####
+            roi_df = hZ.process_rois.calc_phrogs_frac(hmm_df,roi_df,args.pvog_fract)
+            if isinstance(roi_df, str):
+                hZ.get_output.output_no_roi(args.output_folder)
+                hZ.get_output.clean_up(args.output_folder)
+                if args.all_Zscores == True:
+                    hZ.get_output.output_contig_Z(depths,args.output_folder,median, mad)
+                run_end_time = '{:.2f}'.format(time.time() - run_start_time)
+                print('\n{:#^50}'.format(''))
+                print('{:#^50}'.format(' hafeZ run complete! '))
+                print('{:#^50}'.format(' Total run time: ' + run_end_time + ' seconds '))
+                print('{:#^50}'.format(''))
+                sys.exit(0)
 
         ### give rois new, final, names ahead of processing outputs ####
 
@@ -560,8 +595,10 @@ def main():
 
         #### fix hmm table ####
 
-        hZ.get_output.output_hmm_table(roi_df,args.output_folder)
-
+        if args.db_type.lower() == 'pvogs':
+            hZ.get_output.output_hmm_table(roi_df,args.output_folder)
+        elif args.db_type.lower() == 'phrogs':
+            hZ.get_output.output_hmm_table_phrogs(roi_df,args.output_folder,args.db_path)
 
         #### output summary table of rois found ####
 

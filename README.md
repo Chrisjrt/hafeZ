@@ -54,7 +54,13 @@ hafeZ.py -h
 As hafeZ uses the pVOGs database this must first be retrieved and formatted before use. This can be done using the following command:
 
 ```
-hafeZ.py -G hafeZ_db/
+hafeZ.py -G hafeZ_db/ -T phrogs
+```
+
+```diff
+- NOTE: Although both pvogs and phrogs are valid options for the -T/--db_type flag DO NOT USE pVOGS as currently the website hosting the database is down and will therefore not download the database.
+
+- So, currently only use phrogs
 ```
 
 ## illumina reads

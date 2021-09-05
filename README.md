@@ -68,7 +68,7 @@ hafeZ.py -G hafeZ_db/ -T phrogs
 hafeZ accepts illumina reads in both .fastq and .fastq.gz format. To use hafeZ with illumina reads:
 
 ```
-hafeZ.py -f assembly.fasta -r1 read_1.fastq.gz -r2 read_2.fastq.gz -o output_folder -D hageZ_db
+hafeZ.py -f assembly.fasta -r1 read_1.fastq.gz -r2 read_2.fastq.gz -o output_folder -D hageZ_db -T phrogs
 ```
 
 ## Test dataset
@@ -81,7 +81,7 @@ wget -P test/ ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR455/005/ERR4552545/ERR455254
 wget -P test/ ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR455/005/ERR4552545/ERR4552545_2.fastq.gz
 wget -P test/ https://www.ebi.ac.uk/ena/browser/api/fasta/CP015406.2?download=true
 mv test/CP015406.2?download=true test/CP015406.2.fasta
-./hafeZ.py -r1 test/ERR4552545_1.fastq.gz -r2 test/ERR4552545_2.fastq.gz -o test/output -O -f test/CP015406.2.fasta -t 8 -D hafeZ_db/ -Z
+./hafeZ.py -r1 test/ERR4552545_1.fastq.gz -r2 test/ERR4552545_2.fastq.gz -o test/output -O -f test/CP015406.2.fasta -t 8 -D hafeZ_db/ -Z -T phrogs
 ```
 
 ## Outputs

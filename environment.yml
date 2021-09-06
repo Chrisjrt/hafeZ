@@ -1,7 +1,8 @@
 name: hafeZ
 channels:
-  - conda-forge
+  - ursky
   - bioconda
+  - conda-forge
   - defaults
 dependencies:
   - _libgcc_mutex=0.1=conda_forge
@@ -86,6 +87,7 @@ dependencies:
   - gtk2=2.24.33=hab0c2f8_0
   - gts=0.7.6=h64030ff_2
   - harfbuzz=2.8.0=h6f93f22_0
+  - hhsuite=3.3.0=py39pl5262h8f06ca0_2
   - hmmer=3.3.2=he1b5a44_0
   - htslib=1.11=hd3b49d5_2
   - httplib2=0.19.1=pyhd8ed1ab_0
@@ -100,6 +102,7 @@ dependencies:
   - jbig=2.1=h7f98852_2003
   - jinja2=3.0.1=pyhd8ed1ab_0
   - jmespath=0.10.0=pyh9f0ad1d_0
+  - joblib=1.0.1=pyhd8ed1ab_0
   - jpeg=9d=h516909a_0
   - jsonschema=3.2.0=pyhd8ed1ab_3
   - jupyter_core=4.7.1=py39hf3d152e_0
@@ -167,6 +170,7 @@ dependencies:
   - pandas=1.2.4=py39h2531618_0
   - pango=1.42.4=h80147aa_5
   - paramiko=2.7.2=pyh9f0ad1d_0
+  - patsy=0.5.1=py_0
   - pbzip2=1.1.13=0
   - pcre=8.44=he6710b0_0
   - peppy=0.31.1=pyhd8ed1ab_0
@@ -214,7 +218,10 @@ dependencies:
   - s3transfer=0.4.2=pyhd8ed1ab_0
   - sambamba=0.6.8=h89e63da_2
   - samtools=1.11=h6270b1f_0
+  - scikit-learn=0.24.2=py39h4dfa638_0
   - scipy=1.6.2=py39had2a1c9_1
+  - seaborn=0.11.1=hd8ed1ab_1
+  - seaborn-base=0.11.1=pyhd8ed1ab_1
   - setuptools=52.0.0=py39h06a4308_0
   - simplejson=3.17.2=py39h3811e60_2
   - sip=4.19.13=py39h2531618_0
@@ -225,8 +232,10 @@ dependencies:
   - snakemake=6.4.1=hdfd78af_0
   - snakemake-minimal=6.4.1=pyhdfd78af_0
   - sqlite=3.35.4=hdfb4753_0
+  - statsmodels=0.12.2=py39hce5d2b2_0
   - stone=3.2.1=pyhd8ed1ab_0
   - stopit=1.1.2=py_0
+  - threadpoolctl=2.1.0=pyh5ca1d4c_0
   - tk=8.6.10=hbc83047_0
   - toml=0.10.2=pyhd8ed1ab_0
   - toposort=1.6=pyhd8ed1ab_0

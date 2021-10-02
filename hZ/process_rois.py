@@ -180,18 +180,18 @@ def multiprocess_find_soft_clippings(roi_df, clips, width):
         if len(s_list) > 1:
             sub_df = pd.Series(s_list).value_counts().rename_axis('coords').reset_index(name='counts')
             sub_df = sub_df[sub_df['counts'] >= 10]
-        if (len(sub_df[sub_df['coords'] < row['center']]) > 0) and (len(sub_df[sub_df['coords'] > row['center']]) > 0):
-            for i, r in sub_df[sub_df['coords'] < row['center']].iterrows():
-                for ind, rw in sub_df[sub_df['coords'] > row['center']].iterrows():
-                    clip_dict['roi'].append(row['accession'])
-                    clip_dict['start_pos'].append(r['coords'])
-                    clip_dict['start_count'].append(r['counts'])
-                    clip_dict['end_pos'].append(rw['coords'])
-                    clip_dict['end_count'].append(rw['counts'])
-                    clip_dict['length'].append(rw['coords'] - r['coords'])
-                    clip_dict['contig_len'].append(row['contig_len'])
-                    clip_dict['contig'].append(row['contig'])
-                    clip_dict['end_info'].append(row['end_info'])
+            if (len(sub_df[sub_df['coords'] < row['center']]) > 0) and (len(sub_df[sub_df['coords'] > row['center']]) > 0):
+                for i, r in sub_df[sub_df['coords'] < row['center']].iterrows():
+                    for ind, rw in sub_df[sub_df['coords'] > row['center']].iterrows():
+                        clip_dict['roi'].append(row['accession'])
+                        clip_dict['start_pos'].append(r['coords'])
+                        clip_dict['start_count'].append(r['counts'])
+                        clip_dict['end_pos'].append(rw['coords'])
+                        clip_dict['end_count'].append(rw['counts'])
+                        clip_dict['length'].append(rw['coords'] - r['coords'])
+                        clip_dict['contig_len'].append(row['contig_len'])
+                        clip_dict['contig'].append(row['contig'])
+                        clip_dict['end_info'].append(row['end_info'])
     df = pd.DataFrame.from_dict(clip_dict)
     df = df[df['length'] >= width]
     return df
@@ -741,7 +741,7 @@ def extract_roi_orfs(orf_df, orf_aa, roi_df, orf_dna, output_folder,min_orfs):
             orfs = pd.concat([orfs_1,orfs_2])
 
         if len(orfs) < min_orfs:
-            roi_df = roi_df[roi_df['roi'] != row['roi']]
+            roi_df = roi_df[roi_df['roi'] != row['roi']].copy()
         else:
             for i,r in orfs.iterrows():
                 orfs.loc[i, 'new_orf'] = 'orf_' + str(counter)
@@ -822,19 +822,20 @@ def get_att(roi_df,seq,output_folder):
     roi_df['start_pos'] = roi_df['start_pos'].astype(int)
     roi_df['end_pos'] = roi_df['end_pos'].astype(int)
     for index, row in roi_df.iterrows():
-        if (row['circular'] == True):
+        if row['circular'] == True:
             roi_df.loc[index, 'attL_seq'] = np.nan
             roi_df.loc[index, 'attR_seq'] = np.nan
         if not pd.isna(row['contig_split']):
             roi_df.loc[index, 'attL_seq'] = np.nan
             roi_df.loc[index, 'attR_seq'] = np.nan
         else:
-            left = seq[row['contig']][row['start_pos'] - 100 :row['start_pos'] + 100]
-            right = seq[row['contig']][row['end_pos'] - 100 :row['end_pos'] + 100]
-            left.id = row['roi']
-            right.id = row['roi']
-            left_list.append(left)
-            right_list.append(right)
+            if row['circular'] != True:
+                left = seq[row['contig']][row['start_pos'] - 100 :row['start_pos'] + 100]
+                right = seq[row['contig']][row['end_pos'] - 100 :row['end_pos'] + 100]
+                left.id = row['roi']
+                right.id = row['roi']
+                left_list.append(left)
+                right_list.append(right)
     if len(left_list) > 0 and len(right_list) > 0:
         SeqIO.write(left_list, output_folder + '/temp_left.fasta', 'fasta')
         SeqIO.write(right_list, output_folder + '/temp_right.fasta', 'fasta')
@@ -931,11 +932,11 @@ def hhblits_func(chunk, path, out):
         df.to_csv(out + '/temp_' + i.id + '.tab', sep='\t', index=False, header=False)
 
 def hhblits_phrogs(output_folder, threads, db_path):
-    print('\n{:#^50}'.format(' Screening orfs vs pVOGs HMM files '))
+    print('\n{:#^50}'.format(' Screening orfs vs PHROGs HMM files '))
     start_time = time.time()
     aa_file = output_folder + '/temp_aa.fasta'
     hhblits_out = output_folder + '/temp_hmmout.txt'
-    hhblits_db_path = db_path + 'phrogs_hhsuite_db'
+    hhblits_db_path = db_path + '/phrogs_hhsuite_db'
     hhblits_table_path = db_path + '/phrogs_table_almostfinal_plusGO_wNA_utf8.tsv'
     aa_list = []
     for i in SeqIO.parse(aa_file, 'fasta'):
@@ -953,7 +954,7 @@ def hhblits_phrogs(output_folder, threads, db_path):
     return df
 
 def calc_phrogs_frac(hmm_df,roi_df,frac_pvog):
-    print('\n{:#^50}'.format(' Calculating fraction of orfs hit by pVOGs '))
+    print('\n{:#^50}'.format(' Calculating fraction of orfs hit by PHROGs '))
     start_time = time.time()
     hmm_df['prophage'] = hmm_df['orf'].str.split('~').str[:-1].str.join('~')
     hmm_hit = hmm_df[~np.isnan(hmm_df['e'])]

@@ -47,6 +47,9 @@ def get_ZScores(depths, multicontig):
         depths_list = np.append(depths_list,depths[i])
     median = np.median(depths_list)
     mad = np.median(np.absolute(depths_list - median))
+    if mad == 0:
+        print('hafeZ: error: Likely wrong reads being mapped to genome as MAD == 0.\nPlease check you are using correct reads.\nIf error persists please create an issue on github (https://github.com/Chrisjrt/hafeZ)')
+        sys.exit(1)
     for i in depths:
         x[i] = [((0.6745*(x - median))/mad) for x in depths[i]]
         x[i] = np.insert(x[i],0,0,axis=0) # add to start so peaks will find if whole contig passes threshold

@@ -105,12 +105,25 @@ def output_roi_table(roi_df,output_folder):
     for index, row in roi_df.iterrows():
         if row['circular'] == False:
             roi_df.loc[index, 'roi_length'] = row['end_pos'] - row['start_pos'] + 1
-        elif row['circular'] == True:
-            len_1 = row['contig_len'] - row['start_pos']
-            len_2 = row['end_pos'] - 0
-            roi_df.loc[index, 'roi_length'] = len_1 + len_2
-    roi_df = roi_df[['roi_new', 'start_pos', 'start_count', 'end_pos', 'end_count', 'roi_length', 'orf_count','frac_pvog','circular','med_z','attL_seq','attR_seq', 'contig_split','longest_below_z']].copy()
-    roi_df.columns = ['roi', 'start_pos', 'start_count', 'end_pos', 'end_count', 'roi_length', 'orf_count','frac_pvog','circular','med_z','attL_seq','attR_seq', 'contig_split', 'longest_below_z']
+        elif (row['circular'] == True) & (row['roi'].split('_')[-1] == 'c1'):
+            if row['start_pos'] > row['end_pos']:
+                len_1 = row['contig_len'] - row['start_pos']
+                len_2 = row['end_pos'] - 0
+                roi_df.loc[index, 'roi_length'] = len_1 + len_2
+            else:
+                roi_df.loc[index, 'roi_length'] = row['end_pos'] - row['start_pos'] + 1            
+        elif (row['circular'] == True) & (row['roi'].split('_')[-1] == 'c2'):
+            if row['start_pos'] > row['end_pos']:
+                roi_df.loc[index, 'roi_length'] = row['end_pos'] - row['start_pos'] + 1 
+            else:
+                len_1 = row['contig_len'] - row['start_pos']
+                len_2 = row['end_pos'] - 0
+                roi_df.loc[index, 'roi_length'] = len_1 + len_2
+    ##### will add these columns in in a later version
+    # roi_df = roi_df[['roi_new', 'start_pos', 'start_count', 'end_pos', 'end_count', 'roi_length', 'orf_count','frac_pvog','circular','med_z','attL_seq','attR_seq', 'contig_split','longest_below_z']].copy()
+    # roi_df.columns = ['roi', 'start_pos', 'start_count', 'end_pos', 'end_count', 'roi_length', 'orf_count','frac_pvog','circular','med_z','attL_seq','attR_seq', 'contig_split', 'longest_below_z']
+    roi_df = roi_df[['roi_new', 'start_pos', 'start_count', 'end_pos', 'end_count', 'roi_length', 'orf_count','frac_pvog','circular','attL_seq','attR_seq']].copy()
+    roi_df.columns = ['roi', 'start_pos', 'start_count', 'end_pos', 'end_count', 'roi_length', 'orf_count','frac_pvog','circular','attL_seq','attR_seq']
     for index, row in roi_df.iterrows():
         roi_df.loc[index, 'start_pos'] = row['start_pos'] + 1
         roi_df.loc[index, 'frac_pvog'] = round(row['frac_pvog'],2)
@@ -122,6 +135,11 @@ def output_roi_table(roi_df,output_folder):
 def output_no_roi(output_folder):
     roi_df = pd.DataFrame(data = {'roi': [np.nan], 'start_pos': [np.nan], 'end_pos': [np.nan], 'roi_length': [np.nan], 'orf_count': [np.nan], 'frac_pvog': [np.nan], 'circular': [np.nan]})
     roi_df.to_csv(output_folder + '/hafeZ_summary_all_rois.tsv', sep='\t', index=False)
+    print('\n{:#^50}'.format(''))
+    print('{:#^50}'.format(' NO ACTIVE PROPHAGE FOUND '))
+    print('{:#^50}'.format(' exiting and outputing empty .tsv '))
+    print('{:#^50}'.format(''))
+
 
 def output_contig_Z(depths,output_folder,median,mad):
     print('\n{:#^50}'.format(' Making figures of contig Z-scores'))

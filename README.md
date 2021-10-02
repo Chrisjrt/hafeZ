@@ -37,6 +37,7 @@ If installing from source, hafeZ requires the following dependencies to also be 
 - mosdepth
 - hmmer3
 - blast
+- hhsuite
 
 # Quick start
 
@@ -86,15 +87,18 @@ mv test/CP015406.2?download=true test/CP015406.2.fasta
 
 ## Outputs
 
-hafeZ produces five main ouputs:
+If a putative active prophage is found hafeZ produces six main ouputs:
 
 - hafeZ_all_roi_seqs.fasta = file containing the DNA sequences of all the regions of interest identified
-- hafeZ_all_rois.tsv = file containing a summary of info related to each region of interest
+- hafeZ_summary_all_rois.tsv  = file containing a summary of info related to each region of interest
+- hafeZ_hmm_hits.tsv = file containing a list of all region if interest orfs and a description of the pvogs/phrogs they hit
 - hafeZ_prophage_for_xxx.png = image of zscores per base within contigs where a region of interest was identified with the region highlights (one file per contig containing a region of interest)
 - hafeZ_orfs_aa_XXX.faa = fasta file containing amino acid sequence of each orf within the roi
 - hafeZ_orfs_dna_XXX.fasta = fasta file containing the dna sequence of each orf within the roi
 
 N.B. if the -Z option is used an additional input, zscores_for_contigXXX.png, will also be generated which shows the Z-scores of each contig examined (i.e. if input genome contains 100 contigs there will be 100 zscore .png files output. This can be useful if the user wants to manuallly inspect for any potential rois that may be missed under default paramaters. )
+
+If no putative active prophages are found hafeZ will output only an empty hafeZ_summary_all_rois.tsv file. 
 
 ## Caveat
 

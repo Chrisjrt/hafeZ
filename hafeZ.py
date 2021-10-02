@@ -24,7 +24,7 @@ import numpy as np
 ############ SET CURRENT VERSION #############
 ##############################################
 
-__version__ = '1.0.1'
+__version__ = '1.0.2'
 
 ##############################################
 
@@ -587,7 +587,6 @@ def main():
 
         hZ.get_output.output_roi_seqs(roi_df,roi_dna,args.output_folder)
 
-
         #### output graph showing positions ####
 
         hZ.get_output.output_prophage_graphs(roi_df,depths,args.output_folder, median, mad)
@@ -603,7 +602,6 @@ def main():
         #### output summary table of rois found ####
 
         hZ.get_output.output_roi_table(roi_df,args.output_folder)
-
 
         #### output roi orf aa and dna sequences ####
 

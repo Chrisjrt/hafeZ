@@ -16,9 +16,7 @@ setup(
     author='Christopher J. R. Turkington',
     author_email='chrisjrt1@gmail.com',
     url='https://github.com/Chrisjrt/hafeZ',
-     packages=[
-        'hZ'
-    ],
+    packages = ['hZ'],
     install_requires=[
         'pyrodigal>=0.4.7',
         'biopython>=1.78',
@@ -29,4 +27,5 @@ setup(
         'scipy>=1.6.2',
         'seaborn>=0.11.1'
     ],
+    scripts = ['hafeZ.py']
 )

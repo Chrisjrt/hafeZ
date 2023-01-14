@@ -74,7 +74,7 @@ def get_orfs(seq_dict, multicontig):
     orfs_aa = {}
     orfs_dna = {}
     orfs_df_list = []
-    p = pyrodigal.Pyrodigal(meta = multicontig)
+    p = pyrodigal.OrfFinder(meta = multicontig)
     for i in seq_dict:
         if multicontig is False:
             p.train(str(seq_dict[i].seq))

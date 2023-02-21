@@ -68,6 +68,8 @@ def get_roi_sequences(roi_df, seq, output_folder):
     print('{:#^50}'.format(' Done: ' + end_time + ' seconds '))
     return roi_list
 
+
+
 def get_orfs(seq_dict, multicontig):
     print('\n{:#^50}'.format(' Getting ORFs '))
     start_time = time.time()

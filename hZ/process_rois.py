@@ -767,6 +767,45 @@ def extract_roi_orfs(orf_df, orf_aa, roi_df, orf_dna, output_folder,min_orfs):
     print('{:#^50}'.format(' Done: ' + end_time + ' seconds '))
     return roi_df, roi_aa, roi_dna
 
+def extract_roi_orfs_long(orf_df, orf_aa, roi_df, orf_dna, output_folder,min_orfs):
+    print('\n{:#^50}'.format(' Getting orf sequences for rois '))
+    start_time = time.time()
+    roi_aa = {}
+    roi_dna = {}
+    all_roi_orfs = []
+    orf_no = []
+    for index, row in roi_df.iterrows():
+        contig = row['accession'].split('~')[0]
+        counter = 1
+        orfs = orf_df[(orf_df['contig'] == contig) & (orf_df['start'] >= row['likely_start']) & (orf_df['end'] <= row['likely_end'])].copy()
+
+        if len(orfs) < min_orfs:
+            roi_df = roi_df[roi_df['accession'] != row['accession']].copy()
+        else:
+            for i,r in orfs.iterrows():
+                orfs.loc[i, 'new_orf'] = 'orf_' + str(counter)
+                counter = counter + 1
+            orf_no.append(len(orfs))
+            roi_aa[row['accession']] = []
+            roi_dna[row['accession']] = []
+            for i in list(orfs['orf']):
+                aa = orf_aa[contig + '_' + i]
+                aa.id = row['accession'] + '~' + orfs['new_orf'][orfs['orf'] == i].iloc[0]
+                roi_aa[row['accession']].append(aa)
+                dna = orf_dna[contig + '_' + i]
+                dna.id = row['accession'] + '~' + orfs['new_orf'][orfs['orf'] == i].iloc[0]
+                roi_dna[row['accession']].append(dna)
+                all_roi_orfs.append(aa)
+    if len(roi_df) < 1:
+        return 'exit', 'exit', 'exit'
+    else:
+        roi_df['orf_count'] = orf_no.copy()
+        roi_df = roi_df.reset_index(drop = True)
+        SeqIO.write(all_roi_orfs, output_folder + '/temp_aa.fasta', 'fasta')
+        end_time = '{:.3f}'.format(time.time() - start_time)
+    print('{:#^50}'.format(' Done: ' + end_time + ' seconds '))
+    return roi_df, roi_aa, roi_dna
+
 def hmm_scan(output_folder,threads,db_path):
     print('\n{:#^50}'.format(' Screening orfs vs pVOGs HMM files '))
     start_time = time.time()
@@ -870,6 +909,10 @@ def get_att(roi_df,seq,output_folder):
     print('{:#^50}'.format(' Done: ' + end_time + ' seconds '))
     return roi_df
 
+
+
+
+
 def quick_filter(roi_df):
     print('\n{:#^50}'.format(' Doing quick filter as no_extra == True '))
     start_time = time.time()
@@ -970,3 +1013,90 @@ def calc_phrogs_frac(hmm_df,roi_df,frac_pvog):
     if len(df) < 1:
         return 'exit'
     return df
+
+
+
+###########
+# long functions
+###########
+
+# keep supps
+
+def samfile_to_pandas_long(output_folder, roi_df, threads):
+    print('\n{:#^50}'.format(' Parsing and processing sam file '))
+    start_time = time.time()
+    samfile = pysam.AlignmentFile(output_folder + '/temp_minimap_sorted.bam', 'rb')
+    df_dict = {'qname':[], 'rname':[], 'pos':[], 'cigar':[],'tlen':[],'seq':[],'flag':[],'pnext':[], 'qqual':[], 'reference_end':[], 'reference_start': []}
+    long_flags = [0, 16, 2048, 2064]
+    for index, row in roi_df.iterrows():
+        contig = row['accession'].split('~')[0]
+        start = row['start'] - 15001
+        if start < 0:
+            start = 0
+        end = row['end'] + 15001
+        if end > row['contig_len']:
+            end = row['contig_len']
+    # ONT reads - issue with non-primary alignments
+    # keep only 0 (mapped fwd) or 16 (mapped rev)
+        for reads in samfile.fetch(contig, start, end):
+            if reads.flag in long_flags:
+                df_dict['qname'].append(reads.query_name)
+                df_dict['rname'].append(contig)
+                df_dict['pos'].append(reads.reference_start)
+                df_dict['cigar'].append(reads.cigarstring)
+                df_dict['tlen'].append(reads.template_length)
+                df_dict['seq'].append(reads.query_sequence)
+                df_dict['flag'].append(reads.flag)
+                df_dict['pnext'].append(reads.next_reference_start)
+                df_dict['qqual'].append(reads.query_qualities.tolist())
+                df_dict['reference_end'].append(reads.reference_end)
+                df_dict['reference_start'].append(reads.reference_start)
+    df = pd.DataFrame.from_dict(df_dict)
+    df = df.drop_duplicates(subset = ['qname', 'rname', 'pos', 'cigar', 'tlen', 'seq', 'flag', 'pnext', 'reference_end', 'reference_start'], keep='first')
+    df['tlen'] = df['tlen'].astype(int)
+    df['pos'] = df['pos'].astype(int)
+    end_time = '{:.2f}'.format(time.time() - start_time)
+    print('{:#^50}'.format(' Done: ' + end_time + ' seconds '))
+    return df
+
+
+
+def find_supp_long(sam_df, width, roi_df):
+    print('\n{:#^50}'.format(' Finding reads that map to 2 locations '))
+    start_time = time.time()
+    # gets all the reads that have more than 1 mapping
+    df = sam_df[sam_df.duplicated('qname', keep=False) == True]
+    df.to_csv('dupes.tsv', sep='\t', index=False)
+    for index, row in roi_df.iterrows():
+        center = row['center']
+        # gets all the reads in the vicinity of the start and end of the Roi
+        sub_df = df[(df['rname'] == row['contig']) &
+                    (((df['pos'].between(row['start'] - 30000, center)) | (df['pnext'].between(center, row['end'] + 30000))) |
+                    ((df['pnext'].between(row['start'] - 30000, center)) | (df['pos'].between(center, row['end'] + 30000))))].copy()
+
+        # keep only the dupes again 
+        sub_df = sub_df[sub_df.duplicated('qname', keep=False) == True]
+        starts = sub_df['reference_start'].value_counts(dropna=False)
+        ends = sub_df['reference_end'].value_counts(dropna=False)
+        # Don't keep ones with less than 5 hits 
+        if (len(sub_df)/2) < 10:
+            roi_df = roi_df[roi_df['accession'] != row['accession']].copy()
+        else:
+            start_coverage = int(starts.iloc[0])
+            start_position = int(starts.index[0])
+            end_coverage = int(ends.iloc[0])
+            end_position = int(ends.index[0])
+            roi_df.loc[index,'likely_start'] = start_position
+            roi_df.loc[index,'likely_end'] = end_position
+            roi_df.loc[index,'start_count'] = start_coverage
+            roi_df.loc[index,'end_count'] = end_coverage
+    if len(roi_df) < 1:
+        end_time = '{:.2f}'.format(time.time() - start_time)
+        print('{:#^50}'.format(' Done: ' + end_time + ' seconds '))
+        return 'exit'
+    end_time = '{:.2f}'.format(time.time() - start_time)
+    print('{:#^50}'.format(' Done: ' + end_time + ' seconds '))
+    return roi_df
+
+
+

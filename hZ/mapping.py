@@ -2,36 +2,51 @@ import subprocess
 import os
 import time
 
-def get_rough_coverage_prediction(reads1, reads2, genome_length):
+def get_rough_coverage_prediction(reads1, reads2, long_reads, genome_length, short_flag):
     print('\n{:#^50}'.format(' Estimating predicted overall coverage '))
     start_time = time.time()
-    read_bases = subprocess.run(['reformat.sh',
-                        'in1=' + reads1,
-                        'in2=' + reads2], capture_output=True)
+    if short_flag == True:
+        read_bases = subprocess.run(['reformat.sh',
+                            'in1=' + reads1,
+                            'in2=' + reads2], capture_output=True)
+    else:
+        read_bases = subprocess.run(['reformat.sh',
+                    'in=' + long_reads], capture_output=True)
+
     read_bases = int(read_bases.stderr.decode("utf-8").split('\t')[-4].split()[0])
     coverage = read_bases/genome_length
+
     end_time = '{:.2f}'.format(time.time() - start_time)
     print('{:#^50}'.format(' Done: ' + str(end_time) + ' seconds '))
     return coverage
 
 
-def take_read_sample(reads1, reads2, coverage, output_folder, desired_coverage):
+def take_read_sample(reads1, reads2, long_reads, coverage, output_folder, desired_coverage, short_flag):
     print('\n{:#^50}'.format(' Subsampling reads to get desired coverage '))
     start_time = time.time()
     proportion = desired_coverage/coverage
     read1_path = output_folder + '/temp_read1.fastq.gz'
     read2_path = output_folder + '/temp_read2.fastq.gz'
-    subprocess.run(['reformat.sh',
-                        'in1=' + reads1,
-                        'in2=' + reads2,
-                        'out1=' + read1_path,
-                        'out2=' + read2_path,
-                        'samplerate=' + str(proportion),
-                        'sampleseed=1',
-                        'overwrite=true'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    long_path = output_folder + '/temp_longread.fastq.gz'
+    if short_flag == True:
+        subprocess.run(['reformat.sh',
+                            'in1=' + reads1,
+                            'in2=' + reads2,
+                            'out1=' + read1_path,
+                            'out2=' + read2_path,
+                            'samplerate=' + str(proportion),
+                            'sampleseed=1',
+                            'overwrite=true'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    else:
+        subprocess.run(['reformat.sh',
+                    'in=' + long_reads,
+                    'out=' + long_path,
+                    'samplerate=' + str(proportion),
+                    'sampleseed=1',
+                    'overwrite=true'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     end_time = '{:.2f}'.format(time.time() - start_time)
     print('{:#^50}'.format(' Done: ' + str(end_time) + ' seconds '))
-    return read1_path, read2_path
+    return read1_path, read2_path, long_path
 
 def minimap_paired(reads1, reads2, fasta, output_folder, threads):
     print('\n{:#^50}'.format(' Mapping reads to assembly '))
@@ -43,6 +58,22 @@ def minimap_paired(reads1, reads2, fasta, output_folder, threads):
                         fasta,
                         reads1,
                         reads2,
+                        '-t',
+                        str(threads),
+                        '-o',
+                        output_folder + '/temp_minimap.sam'])
+    end_time = '{:.2f}'.format(time.time() - start_time)
+    print('{:#^50}'.format(' Done: ' + str(end_time) + ' seconds '))
+
+def minimap_long(long_reads, fasta, output_folder, threads):
+    print('\n{:#^50}'.format(' Mapping reads to assembly '))
+    start_time = time.time()
+    db = output_folder + '/' + os.path.basename(os.path.splitext(fasta)[0])
+    subprocess.run(['minimap2',
+                        '-ax',
+                        'map-ont',
+                        fasta,
+                        long_reads,
                         '-t',
                         str(threads),
                         '-o',

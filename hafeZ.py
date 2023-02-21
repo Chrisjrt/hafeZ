@@ -24,7 +24,7 @@ import numpy as np
 ############ SET CURRENT VERSION #############
 ##############################################
 
-__version__ = '1.0.3'
+__version__ = '1.1.0'
 
 ##############################################
 
@@ -89,6 +89,13 @@ def main():
          help = 'path to second read set in fastq/fastq.gz format',
          nargs = '?',
          required =False)
+    # nanopore long reads option
+    required.add_argument(
+        '-l', '--long_reads',
+        metavar = 'path',
+        nargs = '?',
+        help = "path to Oxford Nanopore Technologies long read set in fastq/fastq.gz format",
+        required = False)
     # output path input option
     required.add_argument(
          '-o','--output_folder',
@@ -234,8 +241,8 @@ def main():
     ##### Activate arguments #####
     args = parser.parse_args()
 
-    print('\nRunning hafeZ version {} with the following settings:\nhafeZ.py -f {} -r1 {} -r2 {} -o {} -D {} -c {} -b {} -w {} -m {} -t {} -p {} -z {}'.format(
-        __version__, args.fasta, args.reads1, args.reads2, args.output_folder, args.db_path, args.cutoff, args.bin_size, args.width, args.min_orfs, args.threads, args.pvog_fract, args.median_z_cutoff))
+    print('\nRunning hafeZ version {} with the following settings:\nhafeZ.py -f {} -r1 {} -r2 {} -l {} -o {} -D {} -c {} -b {} -w {} -m {} -t {} -p {} -z {}'.format(
+        __version__, args.fasta, args.reads1, args.reads2, args.long_reads, args.output_folder, args.db_path, args.cutoff, args.bin_size, args.width, args.min_orfs, args.threads, args.pvog_fract, args.median_z_cutoff))
 
 
     ##############################################
@@ -302,9 +309,18 @@ def main():
 
     if (args.output_folder != None and
         args.fasta != None and
-        args.reads1 != None and
-   	args.reads2 != None):
+        (args.reads1 != None and
+   	args.reads2 != None) or args.long_reads != None):
 
+        ### define long or short reads 
+        # flag to hold if short reads - if yes, True
+        short_flag = True
+        if args.reads1 != None and args.reads2 != None:
+            print('Paired short reads detected.')
+        if args.long_reads != None:
+            print('Long reads detected.')
+            short_flag = False
+        
         #### make results output directory ####
 
         if args.overwrite == True:
@@ -337,21 +353,22 @@ def main():
         if args.sub_sample == True:
             #### caluclate rough estimated coverage ####
 
-            coverage = hZ.mapping.get_rough_coverage_prediction(args.reads1, args.reads2, genome_length)
+            coverage = hZ.mapping.get_rough_coverage_prediction(args.reads1, args.reads2, args.long_reads, genome_length, short_flag)
 
 
             if coverage > args.coverage:
                 #### take random subsample of reads to appropriate coverage level
 
-                args.reads1, args.reads2 = hZ.mapping.take_read_sample(args.reads1, args.reads2, coverage, args.output_folder, args.coverage)
+                args.reads1, args.reads2, args.long_reads = hZ.mapping.take_read_sample(args.reads1, args.reads2, args.long_reads, coverage, args.output_folder, args.coverage, short_flag)
             else:
                 print('True coverage ({}x) is less than desired coverage ({}x).\nContinuing with True coverage.'.format(round(coverage,1), round(args.coverage,1)))
 
 
         #### map reads to assembly ####
-
-        hZ.mapping.minimap_paired(args.reads1, args.reads2, fasta_filtered, args.output_folder, args.threads)
-
+        if short_flag == True:
+            hZ.mapping.minimap_paired(args.reads1, args.reads2, fasta_filtered, args.output_folder, args.threads)
+        else:
+            hZ.mapping.minimap_long(args.long_reads,fasta_filtered, args.output_folder, args.threads)
 
         #### convert sam to bam ####
 
@@ -371,6 +388,8 @@ def main():
         #### get Z scores ####
 
         zscores, median, mad = hZ.mapping_calcs.get_ZScores(depths, multicontig)
+
+
 
 
         #### get roi coords and begin building output df ####
@@ -412,17 +431,26 @@ def main():
 
         #### process sam file ####
 
-        sam_df = hZ.process_rois.samfile_to_pandas(args.output_folder, roi_df, args.threads)
+        if short_flag == True:
+            sam_df = hZ.process_rois.samfile_to_pandas(args.output_folder, roi_df, args.threads)
+        else:
+            sam_df = hZ.process_rois.samfile_to_pandas_long(args.output_folder, roi_df, args.threads)
+
+        sam_df.to_csv('sam.tsv', sep='\t', index=False)
 
 
         #### find any rois that span an entire contig ####
 
         end_roi_df, roi_df = hZ.process_rois.find_contig_end_rois(roi_df)
 
-        #### find evidence of pairs of reads that are distant from each other (i.e. look to span deletion) ####
+        #### SHORT: find evidence of pairs of reads that are distant from each other (i.e. look to span deletion) ####
+        #### LONG: find evidence of  reads that map twice - primary and supp - this means they will be over 2 contigs ####
 
-        if not isinstance(roi_df, str):
+        if not isinstance(roi_df, str) and short_flag == True:
             roi_df = hZ.process_rois.find_far_reads(sam_df, args.width, roi_df) ##### might want to make this a non exclusion stage and instead an informative stage (i.e. dont delete those that dont have, instead just make column value that says it )
+        else:
+            roi_df = hZ.process_rois.find_supp_long(sam_df, args.width, roi_df) 
+
 
         #### combine roi_df and end_df for next steps: ####
         if not isinstance(roi_df, str) and not isinstance(end_roi_df, str):
@@ -433,137 +461,243 @@ def main():
             roi_df = end_roi_df
             end_roi_df = 'exit'
 
-        #### find soft clipped reads  ####
+# long only
+        if short_flag == False:
+            # finish if empty
+            if len(roi_df) == 0:
+                    hZ.get_output.clean_up(args.output_folder)
+                    run_end_time = '{:.2f}'.format(time.time() - run_start_time)
+                    print('\n{:#^50}'.format(''))
+                    print('{:#^50}'.format(' hafeZ run complete! '))
+                    print('{:#^50}'.format(' Total run time: ' + run_end_time + ' seconds '))
+                    print('{:#^50}'.format(''))
+                    sys.exit(0)
 
-        if not isinstance(roi_df, str):
-            roi_df, clips_df = hZ.process_rois.find_soft_clippings(sam_df,roi_df,args.width, args.threads)#, fasta_filtered,args.output_folder, args.threads)
+            roi_df['roi'] = roi_df['accession'] 
+            roi_df['start_pos'] = roi_df['likely_start']
+            roi_df['end_pos'] = roi_df['likely_end']
+            roi_df['circular'] = False
+            roi_df['contig_split'] = 'NaN'
+            roi_dna = hZ.process_genome.get_roi_sequences(roi_df, seq, args.output_folder)
+            #### call orfs in genome ####
+
+            orf_df, orfs_aa, orfs_dna = hZ.process_genome.get_orfs(seq, multicontig)
+
+            ### extract orfs for roi ###
+
+            roi_df, roi_orf_aa, roi_orf_dna = hZ.process_rois.extract_roi_orfs_long(orf_df, orfs_aa, roi_df, orfs_dna, args.output_folder, args.min_orfs)
+            if isinstance(roi_df, str):
+                hZ.get_output.output_no_roi(args.output_folder)
+                hZ.get_output.clean_up(args.output_folder)
+                if args.all_Zscores == True:
+                    hZ.get_output.output_contig_Z(depths,args.output_folder,median, mad)
+                run_end_time = '{:.2f}'.format(time.time() - run_start_time)
+                print('\n{:#^50}'.format(''))
+                print('{:#^50}'.format(' hafeZ run complete! '))
+                print('{:#^50}'.format(' Total run time: ' + run_end_time + ' seconds '))
+                print('{:#^50}'.format(''))
+                sys.exit(0)
+
+            if args.db_type.lower() == 'pvogs':
+                ### Screen all roi genes vs pvogs db ####
+                hmm_df = hZ.process_rois.hmm_scan(args.output_folder, args.threads, args.db_path)
+                ### calculate fraction of orfs hit by pVOGs ####
+                roi_df = hZ.process_rois.calc_pVOGs_frac(hmm_df,roi_df,args.pvog_fract)
+                if isinstance(roi_df, str):
+                    hZ.get_output.output_no_roi(args.output_folder)
+                    hZ.get_output.clean_up(args.output_folder)
+                    if args.all_Zscores == True:
+                        hZ.get_output.output_contig_Z(depths,args.output_folder,median, mad)
+                    run_end_time = '{:.2f}'.format(time.time() - run_start_time)
+                    print('\n{:#^50}'.format(''))
+                    print('{:#^50}'.format(' hafeZ run complete! '))
+                    print('{:#^50}'.format(' Total run time: ' + run_end_time + ' seconds '))
+                    print('{:#^50}'.format(''))
+                    sys.exit(0)
+            elif args.db_type.lower() == 'phrogs':
+                #### Screen all roi genes vs phrogs db ####
+                hmm_df = hZ.process_rois.hhblits_phrogs(args.output_folder, args.threads, args.db_path)
+                #### calculate fraction of orfs hit by phrogs ####
+                roi_df = hZ.process_rois.calc_phrogs_frac(hmm_df,roi_df,args.pvog_fract)
+                if isinstance(roi_df, str):
+                    hZ.get_output.output_no_roi(args.output_folder)
+                    hZ.get_output.clean_up(args.output_folder)
+                    if args.all_Zscores == True:
+                        hZ.get_output.output_contig_Z(depths,args.output_folder,median, mad)
+                    run_end_time = '{:.2f}'.format(time.time() - run_start_time)
+                    print('\n{:#^50}'.format(''))
+                    print('{:#^50}'.format(' hafeZ run complete! '))
+                    print('{:#^50}'.format(' Total run time: ' + run_end_time + ' seconds '))
+                    print('{:#^50}'.format(''))
+                    sys.exit(0)
+
+            ### give rois new, final, names ahead of processing outputs ####
+            roi_df = hZ.get_output.get_names(roi_df)
+
+            ### find atts ####
+            roi_df = hZ.process_rois.get_att(roi_df,seq,args.output_folder)
+
+            ### output multifasta of roi genome seqs ####
 
 
-        #### refind rois at ends ####
+            hZ.get_output.output_roi_seqs(roi_df,roi_dna,args.output_folder)
 
-        if not isinstance(roi_df, str):
-            roi_df = hZ.process_rois.find_contig_end_rois_again(roi_df)
+            #### output graph showing positions ####
+
+            hZ.get_output.output_prophage_graphs(roi_df,depths,args.output_folder, median, mad)
+
+
+            #### fix hmm table ####
+
+            if args.db_type.lower() == 'pvogs':
+                hZ.get_output.output_hmm_table(roi_df,args.output_folder)
+            elif args.db_type.lower() == 'phrogs':
+                hZ.get_output.output_hmm_table_phrogs(roi_df,args.output_folder,args.db_path)
+
+            #### output summary table of rois found ####
+
+            hZ.get_output.output_roi_table(roi_df,args.output_folder)
+
+            #### output roi orf aa and dna sequences ####
+
+            hZ.get_output.output_roi_orfs(roi_orf_dna,roi_df,args.output_folder,roi_orf_aa)
+
+            #### make Z-score graphs for each contig if -Z flag given ####
+
+            if args.all_Zscores == True:
+                hZ.get_output.output_contig_Z(depths,args.output_folder,median, mad)
+
+
+            #### tidy up by removing temp files ####
+
+            hZ.get_output.clean_up(args.output_folder)
+
+
+            #### print end time ####
+
+            run_end_time = '{:.2f}'.format(time.time() - run_start_time)
+
+            print('\n{:#^50}'.format(''))
+            print('{:#^50}'.format(' hafeZ run complete! '))
+            print('{:#^50}'.format(' Total run time: ' + run_end_time + ' seconds '))
+            print('{:#^50}'.format(''))
+
+
+
+
+################
+# short 
+################
+
+
+        else:
+
+            #### find soft clipped reads  ####
+
+            if not isinstance(roi_df, str):
+                roi_df, clips_df = hZ.process_rois.find_soft_clippings(sam_df,roi_df,args.width, args.threads)#, fasta_filtered,args.output_folder, args.threads)
+
+
+
+
+        #### refine rois at ends ####
+
+            if not isinstance(roi_df, str):
+                roi_df = hZ.process_rois.find_contig_end_rois_again(roi_df)
+
+
+
+
 
 
         #### calculate median Z-scores and filter rois ####
 
-        if not isinstance(roi_df,str):
-            #### calculate median Z-score for each roi ####
-            roi_df = hZ.process_rois.calc_roi_Z_medians(roi_df,cov,median,mad,args.median_z_cutoff, args.threads)
-            #### filter rois using median Z-score for each roi ####
-            roi_df = hZ.process_rois.filter_Z_medians(roi_df,args.median_z_cutoff)
-            ### filter to keep only best X rois ####
             if not isinstance(roi_df,str):
-                roi_df = hZ.process_rois.keep_only_x_best(roi_df,args.keep_threshold)
+                #### calculate median Z-score for each roi ####
+                roi_df = hZ.process_rois.calc_roi_Z_medians(roi_df,cov,median,mad,args.median_z_cutoff, args.threads)
+                #### filter rois using median Z-score for each roi ####
+                roi_df = hZ.process_rois.filter_Z_medians(roi_df,args.median_z_cutoff)
+                ### filter to keep only best X rois ####
+                if not isinstance(roi_df,str):
+                    roi_df = hZ.process_rois.keep_only_x_best(roi_df,args.keep_threshold)
 
-        #### check to see if any rois are circular ####
-        if not isinstance(roi_df, str):
-            circular_df, roi_df = hZ.process_rois.check_for_circular_roi(sam_df,roi_df)#,args.threads)
-        else:
-            circular_df = 'exit'
+
+
+            #### check to see if any rois are circular ####
+            if not isinstance(roi_df, str):
+                circular_df, roi_df = hZ.process_rois.check_for_circular_roi(sam_df,roi_df)#,args.threads)
+            else:
+                circular_df = 'exit'
 
 
         #### do the extra accuracy steps ####
 
-        if args.no_extra == False:
-            ### collect the ends of the soft clipped reads found, map them, collect the results, and process them ####
-            if not isinstance(roi_df, str):
-                roi_df = hZ.process_rois.collecting_clipped_reads(roi_df, clips_df, args.output_folder,args.threads)
-                hZ.mapping.map_clipped_reads(args.output_folder,args.threads,args.fasta,  args.memory_limit)
-                roi_df, end_roi_df = hZ.process_rois.seperate_rois_near_ends(roi_df)
-            if not isinstance(roi_df, str):
-                clip_df = hZ.process_rois.process_clip_sam(args.output_folder,roi_df)
-                if clip_df.empty:
-                    roi_df = 'exit'
+            if args.no_extra == False:
+                ### collect the ends of the soft clipped reads found, map them, collect the results, and process them ####
+                if not isinstance(roi_df, str):
+                    roi_df = hZ.process_rois.collecting_clipped_reads(roi_df, clips_df, args.output_folder,args.threads)
+                    hZ.mapping.map_clipped_reads(args.output_folder,args.threads,args.fasta,  args.memory_limit)
+                    roi_df, end_roi_df = hZ.process_rois.seperate_rois_near_ends(roi_df)
+                if not isinstance(roi_df, str):
+                    clip_df = hZ.process_rois.process_clip_sam(args.output_folder,roi_df)
+                    if clip_df.empty:
+                        roi_df = 'exit'
+                    else:
+                        roi_df = hZ.process_rois.get_clip_pos(clip_df, roi_df, args.output_folder)
+                if not isinstance(end_roi_df, str):
+                    clip_df2 = hZ.process_rois.process_clip_sam_end_rois(args.output_folder, end_roi_df)
+                    end_roi_df = hZ.process_rois.get_clip_pos_end_rois(clip_df2, end_roi_df, raw_seq_dict)
+                if not isinstance(end_roi_df, str):
+                    end_roi_df = hZ.process_rois.filter_by_end_status(end_roi_df)
+                if not isinstance(end_roi_df, str):
+                    end_roi_df = hZ.process_rois.reformat_end_roi_tables(end_roi_df, raw_seq_dict)
+
+
+            #### rejoin all databases together ####
+            df_list = []
+            if short_flag == True:
+                for i in [roi_df,end_roi_df,circular_df]:
+                    if not isinstance(i, str):
+                        df_list.append(i)
+            if len(df_list) > 1:
+                roi_df = pd.concat(df_list)
+                roi_df = roi_df.reset_index(drop=True)
+            elif len(df_list) == 1:
+                roi_df = df_list[0]
+            elif len(df_list) == 0:
+                hZ.get_output.output_no_roi(args.output_folder)
+                hZ.get_output.clean_up(args.output_folder)
+                if args.all_Zscores == True:
+                    hZ.get_output.output_contig_Z(depths,args.output_folder,median, mad)
+                run_end_time = '{:.2f}'.format(time.time() - run_start_time)
+                print('\n{:#^50}'.format(''))
+                print('{:#^50}'.format(' hafeZ run complete! '))
+                print('{:#^50}'.format(' Total run time: ' + run_end_time + ' seconds '))
+                print('{:#^50}'.format(''))
+                sys.exit(0)
+
+            # pick best rois if read checking has been done
+            if args.no_extra == True:
+                roi_df = hZ.process_rois.quick_filter(roi_df)
+
+            #### extract roi sequences ####
+            for index, row in roi_df.iterrows():  #### move this elswhere
+                if pd.isna(row['circular']):
+                    roi_df.loc[index, 'circular'] = False
                 else:
-                    roi_df = hZ.process_rois.get_clip_pos(clip_df, roi_df, args.output_folder)
-            if not isinstance(end_roi_df, str):
-                clip_df2 = hZ.process_rois.process_clip_sam_end_rois(args.output_folder, end_roi_df)
-                end_roi_df = hZ.process_rois.get_clip_pos_end_rois(clip_df2, end_roi_df, raw_seq_dict)
-            if not isinstance(end_roi_df, str):
-                end_roi_df = hZ.process_rois.filter_by_end_status(end_roi_df)
-            if not isinstance(end_roi_df, str):
-                end_roi_df = hZ.process_rois.reformat_end_roi_tables(end_roi_df, raw_seq_dict)
+                    roi_df.loc[index,'med_z'] = np.nan
 
+            ### this may be a good spot to filter the circular rois by z score
+    
+            roi_dna = hZ.process_genome.get_roi_sequences(roi_df, seq, args.output_folder)
 
-        #### rejoin all databases together ####
-        df_list = []
-        for i in [roi_df,end_roi_df,circular_df]:
-            if not isinstance(i, str):
-                df_list.append(i)
-        if len(df_list) > 1:
-            roi_df = pd.concat(df_list)
-            roi_df = roi_df.reset_index(drop=True)
-        elif len(df_list) == 1:
-            roi_df = df_list[0]
-        elif len(df_list) == 0:
-            hZ.get_output.output_no_roi(args.output_folder)
-            hZ.get_output.clean_up(args.output_folder)
-            if args.all_Zscores == True:
-                hZ.get_output.output_contig_Z(depths,args.output_folder,median, mad)
-            run_end_time = '{:.2f}'.format(time.time() - run_start_time)
-            print('\n{:#^50}'.format(''))
-            print('{:#^50}'.format(' hafeZ run complete! '))
-            print('{:#^50}'.format(' Total run time: ' + run_end_time + ' seconds '))
-            print('{:#^50}'.format(''))
-            sys.exit(0)
+            #### call orfs in genome ####
 
-        # pick best rois if read checking has been done
-        if args.no_extra == True:
-            roi_df = hZ.process_rois.quick_filter(roi_df)
+            orf_df, orfs_aa, orfs_dna = hZ.process_genome.get_orfs(seq, multicontig)
 
-        #### extract roi sequences ####
-        for index, row in roi_df.iterrows():  #### move this elswhere
-            if pd.isna(row['circular']):
-                roi_df.loc[index, 'circular'] = False
-            else:
-                roi_df.loc[index,'med_z'] = np.nan
+            ### extract orfs for roi ###
 
-        ### this may be a good spot to filter the circular rois by z score
-
-        roi_dna = hZ.process_genome.get_roi_sequences(roi_df, seq, args.output_folder)
-
-        #### call orfs in genome ####
-
-        orf_df, orfs_aa, orfs_dna = hZ.process_genome.get_orfs(seq, multicontig)
-
-
-        ### extract orfs for roi ###
-
-        roi_df, roi_orf_aa, roi_orf_dna = hZ.process_rois.extract_roi_orfs(orf_df, orfs_aa, roi_df, orfs_dna, args.output_folder, args.min_orfs)
-        if isinstance(roi_df, str):
-            hZ.get_output.output_no_roi(args.output_folder)
-            hZ.get_output.clean_up(args.output_folder)
-            if args.all_Zscores == True:
-                hZ.get_output.output_contig_Z(depths,args.output_folder,median, mad)
-            run_end_time = '{:.2f}'.format(time.time() - run_start_time)
-            print('\n{:#^50}'.format(''))
-            print('{:#^50}'.format(' hafeZ run complete! '))
-            print('{:#^50}'.format(' Total run time: ' + run_end_time + ' seconds '))
-            print('{:#^50}'.format(''))
-            sys.exit(0)
-
-        if args.db_type.lower() == 'pvogs':
-            ### Screen all roi genes vs pvogs db ####
-            hmm_df = hZ.process_rois.hmm_scan(args.output_folder, args.threads, args.db_path)
-            ### calculate fraction of orfs hit by pVOGs ####
-            roi_df = hZ.process_rois.calc_pVOGs_frac(hmm_df,roi_df,args.pvog_fract)
-            if isinstance(roi_df, str):
-                hZ.get_output.output_no_roi(args.output_folder)
-                hZ.get_output.clean_up(args.output_folder)
-                if args.all_Zscores == True:
-                    hZ.get_output.output_contig_Z(depths,args.output_folder,median, mad)
-                run_end_time = '{:.2f}'.format(time.time() - run_start_time)
-                print('\n{:#^50}'.format(''))
-                print('{:#^50}'.format(' hafeZ run complete! '))
-                print('{:#^50}'.format(' Total run time: ' + run_end_time + ' seconds '))
-                print('{:#^50}'.format(''))
-                sys.exit(0)
-        elif args.db_type.lower() == 'phrogs':
-            #### Screen all roi genes vs phrogs db ####
-            hmm_df = hZ.process_rois.hhblits_phrogs(args.output_folder, args.threads, args.db_path)
-            #### calculate fraction of orfs hit by phrogs ####
-            roi_df = hZ.process_rois.calc_phrogs_frac(hmm_df,roi_df,args.pvog_fract)
+            roi_df, roi_orf_aa, roi_orf_dna = hZ.process_rois.extract_roi_orfs(orf_df, orfs_aa, roi_df, orfs_dna, args.output_folder, args.min_orfs)
             if isinstance(roi_df, str):
                 hZ.get_output.output_no_roi(args.output_folder)
                 hZ.get_output.clean_up(args.output_folder)
@@ -576,56 +710,88 @@ def main():
                 print('{:#^50}'.format(''))
                 sys.exit(0)
 
-        ### give rois new, final, names ahead of processing outputs ####
+            if args.db_type.lower() == 'pvogs':
+                ### Screen all roi genes vs pvogs db ####
+                hmm_df = hZ.process_rois.hmm_scan(args.output_folder, args.threads, args.db_path)
+                ### calculate fraction of orfs hit by pVOGs ####
+                roi_df = hZ.process_rois.calc_pVOGs_frac(hmm_df,roi_df,args.pvog_fract)
+                if isinstance(roi_df, str):
+                    hZ.get_output.output_no_roi(args.output_folder)
+                    hZ.get_output.clean_up(args.output_folder)
+                    if args.all_Zscores == True:
+                        hZ.get_output.output_contig_Z(depths,args.output_folder,median, mad)
+                    run_end_time = '{:.2f}'.format(time.time() - run_start_time)
+                    print('\n{:#^50}'.format(''))
+                    print('{:#^50}'.format(' hafeZ run complete! '))
+                    print('{:#^50}'.format(' Total run time: ' + run_end_time + ' seconds '))
+                    print('{:#^50}'.format(''))
+                    sys.exit(0)
+            elif args.db_type.lower() == 'phrogs':
+                #### Screen all roi genes vs phrogs db ####
+                hmm_df = hZ.process_rois.hhblits_phrogs(args.output_folder, args.threads, args.db_path)
+                #### calculate fraction of orfs hit by phrogs ####
+                roi_df = hZ.process_rois.calc_phrogs_frac(hmm_df,roi_df,args.pvog_fract)
+                if isinstance(roi_df, str):
+                    hZ.get_output.output_no_roi(args.output_folder)
+                    hZ.get_output.clean_up(args.output_folder)
+                    if args.all_Zscores == True:
+                        hZ.get_output.output_contig_Z(depths,args.output_folder,median, mad)
+                    run_end_time = '{:.2f}'.format(time.time() - run_start_time)
+                    print('\n{:#^50}'.format(''))
+                    print('{:#^50}'.format(' hafeZ run complete! '))
+                    print('{:#^50}'.format(' Total run time: ' + run_end_time + ' seconds '))
+                    print('{:#^50}'.format(''))
+                    sys.exit(0)
 
-        roi_df = hZ.get_output.get_names(roi_df)
+            ### give rois new, final, names ahead of processing outputs ####
+            roi_df = hZ.get_output.get_names(roi_df)
 
-        ### find atts ####
-        roi_df = hZ.process_rois.get_att(roi_df,seq,args.output_folder)
+            ### find atts ####
+            roi_df = hZ.process_rois.get_att(roi_df,seq,args.output_folder)
 
-        ### output multifasta of roi genome seqs ####
+            ### output multifasta of roi genome seqs ####
 
-        hZ.get_output.output_roi_seqs(roi_df,roi_dna,args.output_folder)
+            hZ.get_output.output_roi_seqs(roi_df,roi_dna,args.output_folder)
 
-        #### output graph showing positions ####
+            #### output graph showing positions ####
 
-        hZ.get_output.output_prophage_graphs(roi_df,depths,args.output_folder, median, mad)
-
-
-        #### fix hmm table ####
-
-        if args.db_type.lower() == 'pvogs':
-            hZ.get_output.output_hmm_table(roi_df,args.output_folder)
-        elif args.db_type.lower() == 'phrogs':
-            hZ.get_output.output_hmm_table_phrogs(roi_df,args.output_folder,args.db_path)
-
-        #### output summary table of rois found ####
-
-        hZ.get_output.output_roi_table(roi_df,args.output_folder)
-
-        #### output roi orf aa and dna sequences ####
-
-        hZ.get_output.output_roi_orfs(roi_orf_dna,roi_df,args.output_folder,roi_orf_aa)
-
-        #### make Z-score graphs for each contig if -Z flag given ####
-
-        if args.all_Zscores == True:
-            hZ.get_output.output_contig_Z(depths,args.output_folder,median, mad)
+            hZ.get_output.output_prophage_graphs(roi_df,depths,args.output_folder, median, mad)
 
 
-        #### tidy up by removing temp files ####
+            #### fix hmm table ####
 
-        hZ.get_output.clean_up(args.output_folder)
+            if args.db_type.lower() == 'pvogs':
+                hZ.get_output.output_hmm_table(roi_df,args.output_folder)
+            elif args.db_type.lower() == 'phrogs':
+                hZ.get_output.output_hmm_table_phrogs(roi_df,args.output_folder,args.db_path)
+
+            #### output summary table of rois found ####
+
+            hZ.get_output.output_roi_table(roi_df,args.output_folder)
+
+            #### output roi orf aa and dna sequences ####
+
+            hZ.get_output.output_roi_orfs(roi_orf_dna,roi_df,args.output_folder,roi_orf_aa)
+
+            #### make Z-score graphs for each contig if -Z flag given ####
+
+            if args.all_Zscores == True:
+                hZ.get_output.output_contig_Z(depths,args.output_folder,median, mad)
 
 
-        #### print end time ####
+            #### tidy up by removing temp files ####
 
-        run_end_time = '{:.2f}'.format(time.time() - run_start_time)
+            hZ.get_output.clean_up(args.output_folder)
 
-        print('\n{:#^50}'.format(''))
-        print('{:#^50}'.format(' hafeZ run complete! '))
-        print('{:#^50}'.format(' Total run time: ' + run_end_time + ' seconds '))
-        print('{:#^50}'.format(''))
+
+            #### print end time ####
+
+            run_end_time = '{:.2f}'.format(time.time() - run_start_time)
+
+            print('\n{:#^50}'.format(''))
+            print('{:#^50}'.format(' hafeZ run complete! '))
+            print('{:#^50}'.format(' Total run time: ' + run_end_time + ' seconds '))
+            print('{:#^50}'.format(''))
 
 ######################################
 

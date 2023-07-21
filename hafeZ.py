@@ -24,7 +24,7 @@ import numpy as np
 ############ SET CURRENT VERSION #############
 ##############################################
 
-__version__ = '1.0.3'
+__version__ = '1.0.4'
 
 ##############################################
 
@@ -220,6 +220,12 @@ def main():
         action='store_true',
         help = 'make graphs of all contig Z-scores even if no roi found (useful for manual inspection). N.B. This will make graphs for each contig, so if you have 100 contigs you will get 100 graphs.',
         required =False)
+    # option to allow MAD == 0 to exit without non-zero exit code
+    optional.add_argument(
+        '-e', '--expect_mad_zero',
+        action='store_true',
+        help = 'allow MAD == 0 to exit without non-zero exit code. Useful for uninduced lysates. Will also cause coverage plots for each contig to be output to help with debugging.',
+        required =False)
     # get help option
     optional.add_argument('-h', '--help',
         action = 'help',
@@ -370,7 +376,7 @@ def main():
 
         #### get Z scores ####
 
-        zscores, median, mad = hZ.mapping_calcs.get_ZScores(depths, multicontig)
+        zscores, median, mad = hZ.mapping_calcs.get_ZScores(depths, multicontig, args.output_folder, cov, args.expect_mad_zero)
 
 
         #### get roi coords and begin building output df ####

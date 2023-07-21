@@ -38,7 +38,20 @@ def smooth_depths(output_folder, bin_size, threads):
     print('{:#^50}'.format(' Done: ' + end_time + ' seconds '))
     return smoothed_dict, raw_dict
 
-def get_ZScores(depths, multicontig):
+def plot_MAD_error_coverage(cov, out_folder):
+    print('\nOutputting coverage plot to help with debugging')
+    for i in cov:
+        depth_to_plot = cov[i]
+        fig = plt.gcf()
+        fig.set_size_inches(18.5, 10.5)
+        plt.plot(depth_to_plot)
+        plt.ylabel('Coverage depth')
+        plt.savefig(out_folder + '/MAD_ERROR_coverage_plot_for_' + i + '.png', format = 'png')
+        plt.clf()
+    print('\n{:#^50}'.format(''))
+
+
+def get_ZScores(depths, multicontig, out_folder, cov, expect_mad_zero):
     print('\n{:#^50}'.format(' Getting Z-scores '))
     start_time = time.time()
     x = {}
@@ -49,7 +62,11 @@ def get_ZScores(depths, multicontig):
     mad = np.median(np.absolute(depths_list - median))
     if mad == 0:
         print('hafeZ: error: Likely wrong reads being mapped to genome as MAD == 0.\nPlease check you are using correct reads.\nIf error persists please create an issue on github (https://github.com/Chrisjrt/hafeZ)')
-        sys.exit(1)
+        if expect_mad_zero:
+            plot_MAD_error_coverage(cov, out_folder)
+            sys.exit(0)
+        else:
+            sys.exit(1)
     for i in depths:
         x[i] = [((0.6745*(x - median))/mad) for x in depths[i]]
         x[i] = np.insert(x[i],0,0,axis=0) # add to start so peaks will find if whole contig passes threshold

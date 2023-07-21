@@ -224,7 +224,7 @@ def main():
     optional.add_argument(
         '-e', '--expect_mad_zero',
         action='store_true',
-        help = 'allow MAD == 0 to exit without non-zero exit code. Useful for uninduced lysates. Will also cause coverage plots for each contig to be output to help with debugging.',
+        help = 'allow MAD == 0 to exit without non-zero exit code. Will also cause coverage plots for each contig to be output to help with debugging. Useful for uninduced lysates.',
         required =False)
     # get help option
     optional.add_argument('-h', '--help',

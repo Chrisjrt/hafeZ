@@ -570,7 +570,7 @@ def fix_table_right(index, row, roi_df, seq):
     else:
         right_start = right_contig_length
         right_end = row['right_end_pos']
-    rroi_df.loc[index, 'contig_split'] = '{}({}..{}) -> {}({}..{})'.format(row['contig'],row['start_pos'],row['end_pos'],
+    roi_df.loc[index, 'contig_split'] = '{}({}..{}) -> {}({}..{})'.format(row['contig'],row['start_pos'],row['end_pos'],
                                                                                      row['right_end_rname'],right_start,right_end)
     return roi_df
 

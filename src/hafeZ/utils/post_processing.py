@@ -1,17 +1,21 @@
+import collections
+import glob
+import os
 import time
-from Bio import SeqIO
-import pandas as pd
-import matplotlib.pyplot as plt
-import os, glob
-import numpy as np
-import matplotlib
 from pathlib import Path
-from hafeZ.utils.external_tools import ExternalTool
+from typing import Any, Dict, List, Tuple, Union
+
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-from typing import Dict, Union, Tuple, Any, List
-import collections
 from loguru import logger
+
+from hafeZ.utils.external_tools import ExternalTool
+
 
 def get_names(roi_df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -32,9 +36,9 @@ def get_names(roi_df: pd.DataFrame) -> pd.DataFrame:
     return roi_df
 
 
-
-
-def get_att(roi_df: pd.DataFrame, filtered_seq_dict: dict, output: Path, logdir: Path) -> pd.DataFrame:
+def get_att(
+    roi_df: pd.DataFrame, filtered_seq_dict: dict, output: Path, logdir: Path
+) -> pd.DataFrame:
     """
     Extracts attL and attR sequences for each ROI in the DataFrame.
 
@@ -64,16 +68,18 @@ def get_att(roi_df: pd.DataFrame, filtered_seq_dict: dict, output: Path, logdir:
     for index, row in roi_df.iterrows():
         if row["circular"] == True:
             roi_df.loc[index, "attL_seq"] = np.nan
-            roi_df.loc[index, "attR_seq" ]= np.nan
+            roi_df.loc[index, "attR_seq"] = np.nan
         if not pd.isna(row["contig_split"]):
             roi_df.loc[index, "attL_seq"] = np.nan
-            roi_df.loc[index, "attR_seq" ]= np.nan
+            roi_df.loc[index, "attR_seq"] = np.nan
         else:
             if row["circular"] != True:
                 left = filtered_seq_dict[row["contig"]][
                     row["start_pos"] - 100 : row["start_pos"] + 100
                 ]
-                right = filtered_seq_dict[row["contig"]][row["end_pos"] - 100 : row["end_pos"] + 100]
+                right = filtered_seq_dict[row["contig"]][
+                    row["end_pos"] - 100 : row["end_pos"] + 100
+                ]
 
                 left_area = SeqIO.SeqRecord(
                     Seq(left),
@@ -97,15 +103,14 @@ def get_att(roi_df: pd.DataFrame, filtered_seq_dict: dict, output: Path, logdir:
         SeqIO.write(right_list, right_fasta, "fasta")
 
         blast = ExternalTool(
-        tool="blastn",
-        input=f"",
-        output=f"",
-        params=f' -query {left_fasta} -subject {right_fasta} -out {blast_output} -evalue 1 -task blastn-short -outfmt  "6 qseqid qstart qend sseqid sstart send evalue qseq sseq length" ',
-        logdir=logdir,
-    ) # healthy e value of 1
-    
-        ExternalTool.run_tool(blast)
+            tool="blastn",
+            input=f"",
+            output=f"",
+            params=f' -query {left_fasta} -subject {right_fasta} -out {blast_output} -evalue 1 -task blastn-short -outfmt  "6 qseqid qstart qend sseqid sstart send evalue qseq sseq length" ',
+            logdir=logdir,
+        )  # healthy e value of 1
 
+        ExternalTool.run_tool(blast)
 
         blast_df = pd.read_csv(
             blast_output,
@@ -141,20 +146,21 @@ def get_att(roi_df: pd.DataFrame, filtered_seq_dict: dict, output: Path, logdir:
             "length",
         ]
         blast_df = pd.DataFrame(columns=column_names)
-    
+
     # add attL and attR to dataframe
     for index, row in roi_df.iterrows():
-        sub_df = blast_df[(blast_df["qname"] == row["roi"]) & (blast_df["sname"] == row["roi"])]
+        sub_df = blast_df[
+            (blast_df["qname"] == row["roi"]) & (blast_df["sname"] == row["roi"])
+        ]
         if len(sub_df) > 0:
-            # get lowest d value 
+            # get lowest d value
             sub_df = sub_df.sort_values(by=["e"]).copy()
             roi_df.loc[index, "attL_seq"] = str(sub_df["qseq"].iloc[0])
-            roi_df.loc[index, "attR_seq"]= str(sub_df["sseq"].iloc[0])
+            roi_df.loc[index, "attR_seq"] = str(sub_df["sseq"].iloc[0])
         else:
             roi_df.loc[index, "attL_seq"] = np.nan
-            roi_df.loc[index, "attR_seq" ]= np.nan
+            roi_df.loc[index, "attR_seq"] = np.nan
     return roi_df
-
 
 
 def output_roi_seqs(roi_df, roi_dna, output):
@@ -177,9 +183,9 @@ def output_roi_seqs(roi_df, roi_dna, output):
     SeqIO.write(final_roi_dna, output / "hafeZ_all_roi_seqs.fasta", "fasta")
 
 
-
-
-def output_prophage_graphs(roi_df: pd.DataFrame, depths: dict, output: Path, median: float, mad: float) -> None:
+def output_prophage_graphs(
+    roi_df: pd.DataFrame, depths: dict, output: Path, median: float, mad: float
+) -> None:
     """
     Generates and saves prophage coverage graphs for each contig.
 
@@ -243,16 +249,15 @@ def output_prophage_graphs(roi_df: pd.DataFrame, depths: dict, output: Path, med
 
 
 # define result
-Result = collections.namedtuple(
-        "Result", ["protein", "hit", "bitscore", "evalue"]
-    )
+Result = collections.namedtuple("Result", ["protein", "hit", "bitscore", "evalue"])
+
 
 def output_all_phrogs(
     roi_orf_aa: Dict[str, List[SeqRecord]],
     best_phrog_results_dict: Dict[str, Result],
     output: Path,
     database: Path,
-    evalue: float
+    evalue: float,
 ) -> None:
     """
     Output the results of phrog annotation for ROIs and ORFs.
@@ -269,31 +274,33 @@ def output_all_phrogs(
     """
 
     # Initialize an empty DataFrame
-    df = pd.DataFrame(columns=['roi', 'orf', 'evalue'])
+    df = pd.DataFrame(columns=["roi", "orf", "evalue"])
 
     # Iterate through the best_phrog_results_dict and add rows to the DataFrame
     for roi, orf_records in roi_orf_aa.items():
         for orf_record in orf_records:
-            new_row = {'roi': roi, 'orf': orf_record.id,  }
+            new_row = {
+                "roi": roi,
+                "orf": orf_record.id,
+            }
             df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
 
-
-    df['phrog'] = ""
+    df["phrog"] = ""
     for index, row in df.iterrows():
-        orf = row['orf']
-        if orf in best_phrog_results_dict.keys(): # where annotated
+        orf = row["orf"]
+        if orf in best_phrog_results_dict.keys():  # where annotated
             orf_info = best_phrog_results_dict.get(orf, {})
-            if orf_info.evalue < evalue: # below eval threshold
+            if orf_info.evalue < evalue:  # below eval threshold
                 phrog_value = orf_info.hit
-                eval = "{:.3e}".format(orf_info.evalue )
-                df.at[index, 'phrog'] = phrog_value
-                df.at[index, 'evalue'] = eval
+                eval = "{:.3e}".format(orf_info.evalue)
+                df.at[index, "phrog"] = phrog_value
+                df.at[index, "evalue"] = eval
             else:
-                df.at[index, 'phrog'] = "No_Hit"
-                df.at[index, 'evalue'] = np.nan
-        else: 
-            df.at[index, 'phrog'] = "No_Hit"
-            df.at[index, 'evalue'] = np.nan
+                df.at[index, "phrog"] = "No_Hit"
+                df.at[index, "evalue"] = np.nan
+        else:
+            df.at[index, "phrog"] = "No_Hit"
+            df.at[index, "evalue"] = np.nan
 
     # merge in annots
 
@@ -301,20 +308,19 @@ def output_all_phrogs(
     phrogs_annot_df = pd.read_csv(
         annot_file,
         sep="\t",
-        usecols=[0,2,3],
+        usecols=[0, 2, 3],
         names=["phrog", "annot", "category"],
     )
 
     phrogs_annot_df["phrog"] = "phrog_" + phrogs_annot_df["phrog"].astype(str)
 
-
-    df = df.merge(phrogs_annot_df, on='phrog', how='left')
+    df = df.merge(phrogs_annot_df, on="phrog", how="left")
 
     # Replace NaN values in the 'annot' column with 'hypothetical protein'
-    df['annot'].fillna('hypothetical protein', inplace=True)
+    df["annot"].fillna("hypothetical protein", inplace=True)
 
     # Replace NaN values in the 'category' column with 'unknown function'
-    df['category'].fillna('unknown function', inplace=True)
+    df["category"].fillna("unknown function", inplace=True)
 
     df = df.reset_index(drop=True)
     df.to_csv(output / "hafeZ_pyhmmer_hits.tsv", sep="\t", index=False)
@@ -324,7 +330,7 @@ def output_roi_orfs(
     roi_orf_dna: Dict[str, SeqRecord],
     roi_df: pd.DataFrame,
     output: Path,
-    roi_orf_aa: Dict[str, SeqRecord]
+    roi_orf_aa: Dict[str, SeqRecord],
 ) -> None:
     """
     Output ROI-associated ORFs in both DNA and amino acid sequences.
@@ -347,9 +353,7 @@ def output_roi_orfs(
             orf_list.append(j)
 
         dna_file: Path = Path(output) / ("hafeZ_orfs_dna_" + str(name) + ".fasta")
-        SeqIO.write(
-            orf_list, dna_file, "fasta"
-        )
+        SeqIO.write(orf_list, dna_file, "fasta")
     for i in roi_df["roi"].unique():
         orf_list = []
         for j in roi_orf_aa[i]:
@@ -358,11 +362,7 @@ def output_roi_orfs(
             orf_list.append(j)
 
         aa_file: Path = Path(output) / ("hafeZ_orfs_aa_" + str(name) + ".fasta")
-        SeqIO.write(
-            orf_list, aa_file, "fasta"
-        )
-
-
+        SeqIO.write(orf_list, aa_file, "fasta")
 
 
 def output_contig_Z(depths, output, median, mad):
@@ -377,9 +377,6 @@ def output_contig_Z(depths, output, median, mad):
 
         plt.savefig(plot_file, format="png")
         plt.clf()
-
-
-
 
 
 def output_roi_table(roi_df: pd.DataFrame, output: Path) -> None:
@@ -446,9 +443,10 @@ def output_roi_table(roi_df: pd.DataFrame, output: Path) -> None:
 
     num_rois = roi_df.shape[0]
 
-    logger.info(f"hafeZ has found {num_rois} ROI(s) indicating likely induced prophages.")
+    logger.info(
+        f"hafeZ has found {num_rois} ROI(s) indicating likely induced prophages."
+    )
 
     out_file: Path = Path(output) / "hafeZ_summary_all_rois.tsv"
 
     roi_df.to_csv(out_file, sep="\t", index=False)
-

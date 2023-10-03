@@ -1,13 +1,14 @@
-import urllib.request
-import sys
-import time
-import os
-import tarfile
-import shutil
-import pandas as pd
 import glob
+import os
+import shutil
 import subprocess
+import sys
+import tarfile
+import time
+import urllib.request
+
 import numpy as np
+import pandas as pd
 
 
 def progress(

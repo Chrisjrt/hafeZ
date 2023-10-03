@@ -1,20 +1,21 @@
-import time
-import pandas as pd
-from scipy.signal import savgol_filter
-from scipy.stats import zscore
-from scipy.signal import find_peaks
-import numpy as np
-from pathlib import Path
-import sys
-import matplotlib.pyplot as plt
-from statistics import mean
-from statistics import stdev
 import multiprocessing
+import sys
+import time
 from functools import partial
-from pandas import DataFrame
-from typing import Dict, List, Union, Tuple
+from pathlib import Path
+from statistics import mean, stdev
+from typing import Dict, List, Tuple, Union
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from loguru import logger
+from pandas import DataFrame
+from scipy.signal import find_peaks, savgol_filter
+from scipy.stats import zscore
+
 from hafeZ.utils.exit import exit_error_gracefully_premap
+
 
 def savgol(df: DataFrame, bin_size: int) -> List[Dict[Union[str, int], List[float]]]:
     """
@@ -42,14 +43,14 @@ def savgol(df: DataFrame, bin_size: int) -> List[Dict[Union[str, int], List[floa
     raw_dict = {}
     smoothed_dict = {}
     raw_dict[df["acc"].unique()[0]] = df["depth"]
-    z = savgol_filter(df["depth"], window_length=bin_size,  polyorder=2)
+    z = savgol_filter(df["depth"], window_length=bin_size, polyorder=2)
     smoothed_dict[df["acc"].unique()[0]] = z
     return [raw_dict, smoothed_dict]
 
 
-
-
-def smooth_depths(output: Path, bin_size: int, threads: int) -> Tuple[Dict[Union[str, int], List[float]], Dict[Union[str, int], List[float]]]:
+def smooth_depths(
+    output: Path, bin_size: int, threads: int
+) -> Tuple[Dict[Union[str, int], List[float]], Dict[Union[str, int], List[float]]]:
     """
     Smooth depth data from BED files using a Savitzky-Golay filter.
 
@@ -71,7 +72,7 @@ def smooth_depths(output: Path, bin_size: int, threads: int) -> Tuple[Dict[Union
     Example:
         smoothed, raw = smooth_depths("output_dir", 5, 4)
     """
-    
+
     # Read the BED file into a DataFrame
 
     bed_file: Path = output / "temp_minimap.regions.bed.gz"
@@ -82,7 +83,6 @@ def smooth_depths(output: Path, bin_size: int, threads: int) -> Tuple[Dict[Union
         sep="\t",
         names=("acc", "start", "end", "depth"),
     )
-
 
     # Group data by 'acc' values
     df = df.groupby("acc")
@@ -108,7 +108,9 @@ def smooth_depths(output: Path, bin_size: int, threads: int) -> Tuple[Dict[Union
     return smoothed_dict, raw_dict
 
 
-def plot_MAD_error_coverage(cov: Dict[Union[str, int], List[float]], output: Path) -> None:
+def plot_MAD_error_coverage(
+    cov: Dict[Union[str, int], List[float]], output: Path
+) -> None:
     """
     Plot coverage depth for each contig and save the plots to the output directory.
 
@@ -125,14 +127,21 @@ def plot_MAD_error_coverage(cov: Dict[Union[str, int], List[float]], output: Pat
         fig = plt.gcf()
         fig.set_size_inches(18.5, 10.5)
         plt.plot(depth_to_plot)
-        plt.ylabel('Coverage depth')
-        plt.savefig(output / ('MAD_ERROR_coverage_plot_for_' + str(i) + '.png'), format='png')
+        plt.ylabel("Coverage depth")
+        plt.savefig(
+            output / ("MAD_ERROR_coverage_plot_for_" + str(i) + ".png"), format="png"
+        )
         plt.clf()
-    print('\n{:#^50}'.format(''))
+    print("\n{:#^50}".format(""))
 
 
-
-def get_ZScores(depths: Dict[Union[str, int], List[float]], output: Path, start_time: float, cov: Dict[Union[str, int], List[float]], expect_mad_zero: bool) -> Tuple[Dict[Union[str, int], List[float]], float, float]:
+def get_ZScores(
+    depths: Dict[Union[str, int], List[float]],
+    output: Path,
+    start_time: float,
+    cov: Dict[Union[str, int], List[float]],
+    expect_mad_zero: bool,
+) -> Tuple[Dict[Union[str, int], List[float]], float, float]:
     """
     Calculate Z-scores for depth data.
 
@@ -170,23 +179,20 @@ def get_ZScores(depths: Dict[Union[str, int], List[float]], output: Path, start_
     median = np.median(depths_list)
     mad = np.median(np.absolute(depths_list - median))
 
-
-
-
     # Check for MAD == 0 to avoid division by zero
     if mad == 0:
         if expect_mad_zero is True:
             plot_MAD_error_coverage(cov, output)
             logger.warning(
-            "This error is likely because the wrong reads being mapped to genome because the MAD == 0.\nPlease check you are using correct reads.\nIf error persists please create an issue on GitHub (https://github.com/Chrisjrt/hafeZ)."
-        )
+                "This error is likely because the wrong reads being mapped to genome because the MAD == 0.\nPlease check you are using correct reads.\nIf error persists please create an issue on GitHub (https://github.com/Chrisjrt/hafeZ)."
+            )
             exit_error_gracefully_premap(output, start_time)
             sys.exit(0)
         else:
             exit_error_gracefully_premap(output, start_time)
             logger.error(
-            "This error is likely because the wrong reads being mapped to genome because the MAD == 0.\n Use --expect_mad_zero to generate a MAD_ERROR_coverage_plot.\nPlease check you are using correct reads.\nIf error persists please create an issue on GitHub (https://github.com/Chrisjrt/hafeZ)."
-        )
+                "This error is likely because the wrong reads being mapped to genome because the MAD == 0.\n Use --expect_mad_zero to generate a MAD_ERROR_coverage_plot.\nPlease check you are using correct reads.\nIf error persists please create an issue on GitHub (https://github.com/Chrisjrt/hafeZ)."
+            )
 
     # Calculate Z-scores for each contig/region
     # https://stats.stackexchange.com/questions/123895/mad-formula-for-outlier-detection
@@ -198,5 +204,3 @@ def get_ZScores(depths: Dict[Union[str, int], List[float]], output: Path, start_
         x[i] = np.append(x[i], 0)  # Add to the end for the same reason
 
     return x, median, mad
-
-

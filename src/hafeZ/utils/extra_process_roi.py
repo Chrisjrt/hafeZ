@@ -2,31 +2,32 @@
 includes all process_rois.py functions from v1 that aren't in the haf class
 """
 
-import time
-from Bio import SeqIO
-import numpy as np
-import subprocess
-import pandas as pd
-from io import StringIO
-import matplotlib.pyplot as plt
-from pathlib import Path
-import sys
-import re
-from scipy import stats
-import pysam
-from collections import Counter
-from Bio.SeqRecord import SeqRecord
-from Bio.Seq import Seq
-import multiprocessing
-from functools import partial
 import itertools
+import multiprocessing
 import os
-from loguru import logger
-from typing import Dict, Union, Tuple, Any
-from typing import Optional
-from hafeZ.utils.util import split_df_for_multiproc
-from hafeZ.utils.external_tools import ExternalTool
+import re
+import subprocess
+import sys
+import time
+from collections import Counter
+from functools import partial
+from io import StringIO
+from pathlib import Path
+from typing import Any, Dict, Optional, Tuple, Union
+
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
+import pysam
+from Bio import SeqIO
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+from loguru import logger
+from scipy import stats
+
+from hafeZ.utils.external_tools import ExternalTool
+from hafeZ.utils.util import split_df_for_multiproc
+
 
 def quick_filter(roi_df: pd.DataFrame) -> pd.DataFrame:
     """

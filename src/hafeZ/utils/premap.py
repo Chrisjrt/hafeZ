@@ -1,13 +1,16 @@
 import time
-from Bio import SeqIO
-from Bio.Seq import Seq
-import pandas as pd
-from loguru import logger
 from pathlib import Path
 from typing import Dict, Tuple, Union
-from hafeZ.utils.util import count_bases_in_fastq
-from hafeZ.utils.external_tools import ExternalTool
+
+import pandas as pd
+from Bio import SeqIO
+from Bio.Seq import Seq
+from loguru import logger
+
 from hafeZ.utils.exit import exit_error_gracefully_premap
+from hafeZ.utils.external_tools import ExternalTool
+from hafeZ.utils.util import count_bases_in_fastq
+
 
 class Premap:
     """Premapping Class for hafeZ"""
@@ -22,7 +25,7 @@ class Premap:
         coverage: float = 100.0,
         estimated_coverage: float = 100.0,
         output: Path = "output_hafeZ",
-        start_time: float = 0.0
+        start_time: float = 0.0,
     ) -> None:
         """
         Parameters
@@ -90,12 +93,11 @@ class Premap:
                 seq_list.append(record)
         # check how many contigs passed the thresholds
         if len(filtered_seq_dict) < 1:
-
             exit_error_gracefully_premap(self.output, self.start_time)
             logger.error(
                 f"No contigs were over {min_contig_len} that passed initial filtering. Please check your input FASTA {genome}."
             )
-            
+
         elif len(filtered_seq_dict) == 1:
             multicontig = False
         elif len(filtered_seq_dict) > 1:
@@ -115,7 +117,7 @@ class Premap:
 
         Parameters:
             None
-        
+
         Returns:
             None
 
@@ -129,8 +131,7 @@ class Premap:
             genome_length += len(self.raw_seq_dict[i])
         self.genome_length = genome_length
 
-
-    def calculate_estimated_coverage_short(self, reads1: Path, reads2: Path) ->  None :
+    def calculate_estimated_coverage_short(self, reads1: Path, reads2: Path) -> None:
         """
         Calculate and estimate the predicted overall coverage based on input read files.
 
@@ -148,7 +149,6 @@ class Premap:
         """
 
         # calculate the coverage
-        
 
         file1_bases = count_bases_in_fastq(reads1)
         file2_bases = count_bases_in_fastq(reads2)
@@ -157,7 +157,9 @@ class Premap:
         estimated_coverage = total_bases / self.genome_length
         self.estimated_coverage = estimated_coverage
 
-    def subsample_short(self, reads1: Path, reads2: Path, logdir: Path ) ->  Tuple[Path, Path] :
+    def subsample_short(
+        self, reads1: Path, reads2: Path, logdir: Path
+    ) -> Tuple[Path, Path]:
         """
         Subsample sequencing reads to achieve a target coverage if necessary.
 
@@ -180,7 +182,7 @@ class Premap:
         Note: This method assumes that the 'rasusa' tool is available and properly configured.
 
         """
-        
+
         # set path of reads to be used later
         # will be unchanged if no subsample
         outreads1: Path = self.output / "subsampled_R1.fastq.gz"
@@ -188,34 +190,37 @@ class Premap:
 
         # runs rasusa if sampling
         if self.estimated_coverage > self.coverage:
-            logger.info(f"Estimated coverage {self.estimated_coverage:.2f}x is more than desired coverage ({self.coverage}x).")
+            logger.info(
+                f"Estimated coverage {self.estimated_coverage:.2f}x is more than desired coverage ({self.coverage}x)."
+            )
             logger.info(f"Subsampling with rasusa.")
             rasusa = ExternalTool(
-            tool="rasusa",
-            input=f"",
-            output=f"",
-            params=f'-i {reads1} -i {reads2} --coverage {str(self.coverage)} -s 13  --genome-size {str(self.genome_length)} -o {outreads1} -o {outreads2} -O G',
-            logdir=logdir,
-        )
-            
+                tool="rasusa",
+                input=f"",
+                output=f"",
+                params=f"-i {reads1} -i {reads2} --coverage {str(self.coverage)} -s 13  --genome-size {str(self.genome_length)} -o {outreads1} -o {outreads2} -O G",
+                logdir=logdir,
+            )
+
             ExternalTool.run_tool(rasusa)
 
         elif self.coverage > self.estimated_coverage:
-            logger.info(f"Estimated coverage {self.estimated_coverage:.2f} is less than desired coverage ({self.coverage}x).")
-            logger.info(f"Continuing with estimated coverage {self.estimated_coverage:.2f}")
+            logger.info(
+                f"Estimated coverage {self.estimated_coverage:.2f} is less than desired coverage ({self.coverage}x)."
+            )
+            logger.info(
+                f"Continuing with estimated coverage {self.estimated_coverage:.2f}"
+            )
             outreads1 = reads1
             outreads2 = reads2
 
         return outreads1, outreads2
 
-
-             
     """
     long
     """
 
-
-    def calculate_estimated_coverage_long(self, longreads: Path) ->  None :
+    def calculate_estimated_coverage_long(self, longreads: Path) -> None:
         """
         Calculate and estimate the predicted overall coverage based on input read files.
 
@@ -233,15 +238,12 @@ class Premap:
         """
 
         # calculate the coverage
-        
 
         total_bases = count_bases_in_fastq(longreads)
         estimated_coverage = total_bases / self.genome_length
         self.estimated_coverage = estimated_coverage
 
-        
-
-    def subsample_long(self, longreads: Path, logdir: Path ) ->  Tuple[Path, Path] :
+    def subsample_long(self, longreads: Path, logdir: Path) -> Tuple[Path, Path]:
         """
         Subsample sequencing reads to achieve a target coverage if necessary.
 
@@ -263,30 +265,34 @@ class Premap:
         Note: This method assumes that the 'rasusa' tool is available and properly configured.
 
         """
-        
+
         # set path of reads to be used later
         # will be unchanged if no subsample
         outreads: Path = self.output / "subsampled_long.fastq.gz"
 
         # runs rasusa if sampling
         if self.estimated_coverage > self.coverage:
-            logger.info(f"Estimated coverage {self.estimated_coverage:.2f}x is more than desired coverage ({self.coverage}x).")
+            logger.info(
+                f"Estimated coverage {self.estimated_coverage:.2f}x is more than desired coverage ({self.coverage}x)."
+            )
             logger.info(f"Subsampling with rasusa.")
             rasusa = ExternalTool(
-            tool="rasusa",
-            input=f"",
-            output=f"",
-            params=f'-i {longreads} --coverage {str(self.coverage)} -s 13  --genome-size {str(self.genome_length)} -o {outreads}  -O G',
-            logdir=logdir,
-        )
-            
+                tool="rasusa",
+                input=f"",
+                output=f"",
+                params=f"-i {longreads} --coverage {str(self.coverage)} -s 13  --genome-size {str(self.genome_length)} -o {outreads}  -O G",
+                logdir=logdir,
+            )
+
             ExternalTool.run_tool(rasusa)
 
         elif self.coverage > self.estimated_coverage:
-            logger.info(f"Estimated coverage {self.estimated_coverage:.2f} is less than desired coverage ({self.coverage}x).")
-            logger.info(f"Continuing with estimated coverage {self.estimated_coverage:.2f}")
+            logger.info(
+                f"Estimated coverage {self.estimated_coverage:.2f} is less than desired coverage ({self.coverage}x)."
+            )
+            logger.info(
+                f"Continuing with estimated coverage {self.estimated_coverage:.2f}"
+            )
             outreads = longreads
 
         return outreads
-        
-

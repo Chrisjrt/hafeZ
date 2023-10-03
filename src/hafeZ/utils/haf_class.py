@@ -5,6 +5,7 @@ import string
 from cmath import nan
 from pathlib import Path
 from re import T
+from typing import Dict, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -12,7 +13,6 @@ from Bio import SeqIO
 from Bio.SeqUtils import GC
 from loguru import logger
 from util import remove_directory, remove_file, touch_file
-from typing import Dict, Tuple, Union
 
 
 class Haf:

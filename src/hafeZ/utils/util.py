@@ -1,13 +1,14 @@
 """MISC FUNCTIONS
 """
 
-import os
 import binascii
-import multiprocessing
-import shutil
 import gzip
+import multiprocessing
+import os
+import shutil
 import sys
 import time
+
 import click
 from loguru import logger
 
@@ -106,7 +107,9 @@ def begin_hafeZ(params):
 
     print_splash()
 
-    logger.info("hafeZ: Identify inducible prophages through bacterial genomic read mapping.")
+    logger.info(
+        "hafeZ: Identify inducible prophages through bacterial genomic read mapping."
+    )
     logger.info(f"You are using hafeZ version {get_version()}")
     logger.info(f"Repository homepage is https://github.com/Chrisjrt/hafeZ.")
     logger.info(f"Listing parameters.")
@@ -116,13 +119,11 @@ def begin_hafeZ(params):
     return start_time
 
 
-
-
-
 """
 from phiSpy
 https://github.com/linsalrob/PhiSpy/blob/2e0e96ad3c5b92a2154b18de37d4c2865687c06e/PhiSpyModules/helper_functions.py#L46
 """
+
 
 def is_gzip_file(f):
     """
@@ -132,10 +133,8 @@ def is_gzip_file(f):
     :param f: the file to test
     :return: True if the file is gzip compressed else false
     """
-    with open(f, 'rb') as i:
-        return binascii.hexlify(i.read(2)) == b'1f8b'
-    
-
+    with open(f, "rb") as i:
+        return binascii.hexlify(i.read(2)) == b"1f8b"
 
 
 def count_bases_in_fastq(fastq_file):
@@ -143,12 +142,12 @@ def count_bases_in_fastq(fastq_file):
 
     # if gzip
     if is_gzip_file(fastq_file) is True:
-        with gzip.open(fastq_file, 'rt') as file:
+        with gzip.open(fastq_file, "rt") as file:
             for line_number, line in enumerate(file, start=1):
                 if line_number % 4 == 2:
                     total_bases += len(line.strip())
     else:
-        with open(fastq_file, 'r') as file:
+        with open(fastq_file, "r") as file:
             for line_number, line in enumerate(file, start=1):
                 if line_number % 4 == 2:
                     total_bases += len(line.strip())

@@ -1,4 +1,4 @@
-PROJECT := "dnaapler"
+PROJECT := "hafeZ"
 OPEN := if os() == "macos" { "open" } else { "xdg-open" }
 VERSION := `poetry version | rg -o '\d+\.\d+\.\d+'`
 

@@ -7,8 +7,8 @@ import shutil
 import subprocess as sp
 import sys
 from pathlib import Path
-import pyrodigal
 
+import pyrodigal
 from Bio import SeqIO
 from loguru import logger
 
@@ -47,9 +47,7 @@ def validate_fasta(input_fasta: Path):
     """
     Validates  FASTA input - checks that the input is a FASTA
     """
-    logger.info(
-        f"Checking that the input file {input_fasta} is in FASTA format."
-    )
+    logger.info(f"Checking that the input file {input_fasta} is in FASTA format.")
     # to get extension
     with open(input_fasta, "r") as handle:
         fasta = SeqIO.parse(handle, "fasta")

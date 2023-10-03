@@ -3,24 +3,28 @@ functions regarding orf prediction and mapping
 """
 
 
-from Bio import SeqIO
-from Bio.SeqRecord import SeqRecord
-from Bio.Seq import Seq
-import pandas as pd
-import pyrodigal
-from typing import Dict, Union, Tuple, Any, List
-from pathlib import Path
-from loguru import logger
 import collections
 import os
-from pyhmmer.easel import Alphabet
 import re
+from pathlib import Path
+from typing import Any, Dict, List, Tuple, Union
+
+import pandas as pd
 import pyhmmer
-from pyhmmer.easel import SequenceFile
+import pyrodigal
+from Bio import SeqIO
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+from loguru import logger
+from pyhmmer.easel import Alphabet, SequenceFile
 from pyhmmer.plan7 import HMM, HMMFile
+
 from hafeZ.utils.exit import exit_error_gracefully
 
-def get_roi_sequences(roi_df: pd.DataFrame, filtered_seq_dict: Dict[str, Seq], output: Path) -> List[SeqIO.SeqRecord]:
+
+def get_roi_sequences(
+    roi_df: pd.DataFrame, filtered_seq_dict: Dict[str, Seq], output: Path
+) -> List[SeqIO.SeqRecord]:
     """
     Retrieve sequences for regions of interest (ROIs) based on the provided DataFrame and sequence data.
 
@@ -37,7 +41,9 @@ def get_roi_sequences(roi_df: pd.DataFrame, filtered_seq_dict: Dict[str, Seq], o
 
     roi_list = []
     for index, row in roi_df.iterrows():
-        if (row["circular"] is False) or ((row["circular"] is True) and (row["roi"].split("_")[-1] == "c1")):
+        if (row["circular"] is False) or (
+            (row["circular"] is True) and (row["roi"].split("_")[-1] == "c1")
+        ):
             start = int(row["start_pos"])
             end = int(row["end_pos"])
             roi_str = filtered_seq_dict[row["roi"].split("~")[0]][start : end - 1]
@@ -63,18 +69,22 @@ def get_roi_sequences(roi_df: pd.DataFrame, filtered_seq_dict: Dict[str, Seq], o
                 description="",
             )
             roi_list.append(roi)
-    # write the ROIs 
+    # write the ROIs
     SeqIO.write(roi_list, refined_roi_fasta, "fasta")
     return roi_list
 
 
+from typing import Dict, List, Tuple
+
+import pandas as pd
+import pyrodigal
 from Bio import SeqIO
 from Bio.Seq import Seq
-import pyrodigal
-import pandas as pd
-from typing import Tuple, Dict, List
 
-def get_orfs(filtered_seq_dict: Dict[str, Seq], multicontig: bool) -> Tuple[pd.DataFrame, Dict[str, SeqIO.SeqRecord], Dict[str, SeqIO.SeqRecord]]:
+
+def get_orfs(
+    filtered_seq_dict: Dict[str, Seq], multicontig: bool
+) -> Tuple[pd.DataFrame, Dict[str, SeqIO.SeqRecord], Dict[str, SeqIO.SeqRecord]]:
     """
     Find and extract ORFs (Open Reading Frames) from a dictionary of sequences.
 
@@ -94,7 +104,7 @@ def get_orfs(filtered_seq_dict: Dict[str, Seq], multicontig: bool) -> Tuple[pd.D
     p = pyrodigal.GeneFinder(meta=multicontig)
 
     for i in filtered_seq_dict:
-        if multicontig is False: # can add a length check here
+        if multicontig is False:  # can add a length check here
             p.train(str(filtered_seq_dict[i]))
         genes = p.find_genes(str(filtered_seq_dict[i]))
         orfs_db = {
@@ -124,7 +134,7 @@ def get_orfs(filtered_seq_dict: Dict[str, Seq], multicontig: bool) -> Tuple[pd.D
             )
             orfs_aa[i + "_orf_" + str(j)] = aa_record
 
-            if gene.strand > 0: # positive 
+            if gene.strand > 0:  # positive
                 dna_record = SeqIO.SeqRecord(
                     Seq(str(filtered_seq_dict[i][int(gene.begin) - 1 : int(gene.end)])),
                     id=i + "_orf_" + str(j),
@@ -133,8 +143,9 @@ def get_orfs(filtered_seq_dict: Dict[str, Seq], multicontig: bool) -> Tuple[pd.D
                 )
             else:
                 dna_record = SeqIO.SeqRecord(
-                    Seq(filtered_seq_dict[i][int(gene.begin) - 1 : int(gene.end)])
-                    .reverse_complement(),
+                    Seq(
+                        filtered_seq_dict[i][int(gene.begin) - 1 : int(gene.end)]
+                    ).reverse_complement(),
                     id=i + "_orf_" + str(j),
                     name="",
                     description="",
@@ -154,14 +165,19 @@ def get_orfs(filtered_seq_dict: Dict[str, Seq], multicontig: bool) -> Tuple[pd.D
     return orf_df, orfs_aa, orfs_dna
 
 
-
-
-
-def extract_roi_orfs(orf_df: pd.DataFrame, orf_aa: dict, roi_df: pd.DataFrame, orf_dna: dict, 
-                     output: Path, min_orfs: int, all_zscores: bool, 
-                     depths: Dict[Union[str, int], List[float]], median: float, mad: float, start_time: float) -> Tuple[Union[str, pd.DataFrame], 
-                                                                  Union[str, dict], 
-                                                                  Union[str, dict]]:
+def extract_roi_orfs(
+    orf_df: pd.DataFrame,
+    orf_aa: dict,
+    roi_df: pd.DataFrame,
+    orf_dna: dict,
+    output: Path,
+    min_orfs: int,
+    all_zscores: bool,
+    depths: Dict[Union[str, int], List[float]],
+    median: float,
+    mad: float,
+    start_time: float,
+) -> Tuple[Union[str, pd.DataFrame], Union[str, dict], Union[str, dict]]:
     """
     Extract ORF sequences for regions of interest (ROIs) based on the provided DataFrames and dictionaries.
 
@@ -195,8 +211,10 @@ def extract_roi_orfs(orf_df: pd.DataFrame, orf_aa: dict, roi_df: pd.DataFrame, o
     for index, row in roi_df.iterrows():
         contig = row["roi"].split("~")[0]
         counter = 1
-        
-        if (row["circular"] == False) or ((row["circular"] == True) and (row["roi"].split("_")[-1] == "c1")):
+
+        if (row["circular"] == False) or (
+            (row["circular"] == True) and (row["roi"].split("_")[-1] == "c1")
+        ):
             orfs = orf_df[
                 (orf_df["contig"] == contig)
                 & (orf_df["start"] >= row["start_pos"])
@@ -241,12 +259,12 @@ def extract_roi_orfs(orf_df: pd.DataFrame, orf_aa: dict, roi_df: pd.DataFrame, o
         roi_df = roi_df.reset_index(drop=True)
         SeqIO.write(all_roi_orfs, temp_aa_fasta, "fasta")
 
-
         return roi_df, roi_aa, roi_dna
 
 
-
-def run_pyhmmer(database: Path, output: Path, threads: int, evalue: float) -> Dict[str, Tuple[str, str, float, float]]:
+def run_pyhmmer(
+    database: Path, output: Path, threads: int, evalue: float
+) -> Dict[str, Tuple[str, str, float, float]]:
     """
     Runs PyHMMER to search for protein hits in a database.
 
@@ -265,19 +283,13 @@ def run_pyhmmer(database: Path, output: Path, threads: int, evalue: float) -> Di
     amino_acid_fasta_file: Path = Path(output) / "temp_aa.fasta"
 
     # Define the result data structure
-    Result = collections.namedtuple(
-        "Result", ["protein", "hit", "bitscore", "evalue"]
-    )
+    Result = collections.namedtuple("Result", ["protein", "hit", "bitscore", "evalue"])
 
     # Run hmmscan and get all results
     results = []
     with pyhmmer.plan7.HMMFile(os.path.join(database, "all_phrogs.h3m")) as hmms:
-        with pyhmmer.easel.SequenceFile(
-            amino_acid_fasta_file, digital=True
-        ) as seqs:
-            for hits in pyhmmer.hmmer.hmmscan(
-                seqs, hmms, cpus=int(threads), E=evalue
-            ):
+        with pyhmmer.easel.SequenceFile(amino_acid_fasta_file, digital=True) as seqs:
+            for hits in pyhmmer.hmmer.hmmscan(seqs, hmms, cpus=int(threads), E=evalue):
                 protein = hits.query_name.decode()
                 for hit in hits:
                     if hit.included:
@@ -304,15 +316,17 @@ def run_pyhmmer(database: Path, output: Path, threads: int, evalue: float) -> Di
     return best_results
 
 
-
 def calc_phrogs_frac(
     best_phrog_results_dict: Dict[str, Union[str, float]],
     roi_df: pd.DataFrame,
     phrog_fract: float,
     evalue: float,
-    output: Path, 
-    all_zscores: bool, 
-    depths: Dict[Union[str, int], List[float]], median: float, mad: float, start_time: float
+    output: Path,
+    all_zscores: bool,
+    depths: Dict[Union[str, int], List[float]],
+    median: float,
+    mad: float,
+    start_time: float,
 ) -> pd.DataFrame:
     """
     Calculate PHROGs fraction for each ROI and filter based on the threshold.
@@ -336,10 +350,16 @@ def calc_phrogs_frac(
 
     # Function to count matching proteins with the right name (strip off orf) with evalue < evalue
     def count_matching_entries(roi_key):
-        return len([k for k, v in best_phrog_results_dict.items() if re.split(r'~orf_\d+', k)[0] == roi_key and v[3] < evalue])
+        return len(
+            [
+                k
+                for k, v in best_phrog_results_dict.items()
+                if re.split(r"~orf_\d+", k)[0] == roi_key and v[3] < evalue
+            ]
+        )
 
     # Create a new column 'pyhmmer_phrog_hits' in roi_df to store the counts
-    roi_df['pyhmmer_phrog_hits'] = roi_df['roi'].apply(count_matching_entries)
+    roi_df["pyhmmer_phrog_hits"] = roi_df["roi"].apply(count_matching_entries)
 
     # Calculate the fraction of PHROGs hits
     roi_df["frac_phrog"] = roi_df["pyhmmer_phrog_hits"] / roi_df["orf_count"]
@@ -348,14 +368,14 @@ def calc_phrogs_frac(
     roi_df = roi_df[roi_df["frac_phrog"] >= phrog_fract]
 
     if roi_df is not None:
-        if len(roi_df) > 0 :
-            logger.info(f"{roi_df.shape[0]} ROIs passed as they had more than {phrog_fract} proportion of genes annotated by PHROGs.")
+        if len(roi_df) > 0:
+            logger.info(
+                f"{roi_df.shape[0]} ROIs passed as they had more than {phrog_fract} proportion of genes annotated by PHROGs."
+            )
     else:  # error 0 ROIs
         exit_error_gracefully(output, all_zscores, depths, median, mad, start_time)
-        logger.error(f"0 ROIs passed as they had more than {phrog_fract} proportion of genes annotated by PHROGs.")
+        logger.error(
+            f"0 ROIs passed as they had more than {phrog_fract} proportion of genes annotated by PHROGs."
+        )
 
     return roi_df
-
-
-
-

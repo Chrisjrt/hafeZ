@@ -1,25 +1,31 @@
-import time
-from Bio import SeqIO
-import pandas as pd
-import matplotlib.pyplot as plt
-import os, glob
-import numpy as np
-import matplotlib
-from pathlib import Path
-from hafeZ.utils.external_tools import ExternalTool
-from Bio.Seq import Seq
-from Bio.SeqRecord import SeqRecord
-from typing import Dict, Union, Tuple, Any, List
-import collections               
-from loguru import logger
+import collections
 import glob
 import os
+import time
+from pathlib import Path
+from typing import Any, Dict, List, Tuple, Union
 
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from Bio import SeqIO
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+from loguru import logger
+
+from hafeZ.utils.external_tools import ExternalTool
 from hafeZ.utils.post_processing import output_contig_Z
 from hafeZ.utils.util import remove_file
 
+
 def exit_error_gracefully(
-    output: Path, all_zscores: bool, depths: Dict[Union[str, int], List[float]], median: float, mad: float, start_time: float
+    output: Path,
+    all_zscores: bool,
+    depths: Dict[Union[str, int], List[float]],
+    median: float,
+    mad: float,
+    start_time: float,
 ) -> None:
     """
     Gracefully handle errors and perform cleanup tasks.
@@ -40,9 +46,7 @@ def exit_error_gracefully(
     # remove temp files
     clean_up(output)
     if all_zscores is True:
-        output_contig_Z(
-            depths, output, median, mad
-        )
+        output_contig_Z(depths, output, median, mad)
 
     # Determine elapsed time
     elapsed_time = time.time() - start_time
@@ -53,9 +57,7 @@ def exit_error_gracefully(
     logger.info(f"Total run time: {elapsed_time} seconds.")
 
 
-def exit_error_gracefully_premap(
-    output: Path, start_time: float
-) -> None:
+def exit_error_gracefully_premap(output: Path, start_time: float) -> None:
     """
     Gracefully handle errors and perform cleanup tasks in Premap class.
 
@@ -80,8 +82,6 @@ def exit_error_gracefully_premap(
     logger.info(f"Total run time: {elapsed_time} seconds.")
 
 
-
-
 def exit_success(output: Path, start_time: float) -> None:
     """
     Handle successful exit and perform cleanup tasks.
@@ -103,8 +103,6 @@ def exit_success(output: Path, start_time: float) -> None:
     # Show elapsed time for the process
     logger.info("hafeZ run complete!")
     logger.info(f"Total run time: {elapsed_time} seconds.")
-
-
 
 
 def output_no_roi(output: Path) -> None:
@@ -132,7 +130,6 @@ def output_no_roi(output: Path) -> None:
     roi_df.to_csv(out_file, sep="\t", index=False)
     logger.info("NO ACTIVE PROPHAGES FOUND.")
     logger.info(f"Exiting and outputing an empty .tsv summary file {out_file}.")
-    
 
 
 def clean_up(output: Path) -> None:
@@ -147,8 +144,3 @@ def clean_up(output: Path) -> None:
     """
     for temp_file in glob.glob(str(output) + "/temp*"):
         remove_file(temp_file)
-
-
-
-
-

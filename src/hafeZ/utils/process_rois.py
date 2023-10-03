@@ -1,70 +1,66 @@
-import time
-from Bio import SeqIO
-import numpy as np
-import subprocess
-import pandas as pd
-from io import StringIO
-import matplotlib.pyplot as plt
-from pathlib import Path
-import sys
-import re
-from scipy import stats
-import pysam
-from collections import Counter
-from Bio.SeqRecord import SeqRecord
-from Bio.Seq import Seq
-import multiprocessing
-from functools import partial
 import itertools
+import multiprocessing
 import os
+import re
+import subprocess
+import sys
+import time
+from collections import Counter
+from functools import partial
+from io import StringIO
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import pysam
+from Bio import SeqIO
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 from loguru import logger
-from typing import Dict, Union, Tuple, Any, List
-from typing import Optional
-from hafeZ.utils.util import split_df_for_multiproc
-from hafeZ.utils.external_tools import ExternalTool
+from scipy import stats
+
 from hafeZ.utils.exit import exit_error_gracefully
+from hafeZ.utils.external_tools import ExternalTool
+from hafeZ.utils.util import split_df_for_multiproc
+
 
 class Haf:
     """Main Class for hafeZ RoI Processing"""
 
     def __init__(
         self,
-        roi_df: pd.DataFrame() = pd.DataFrame(
-            {"col1": [1, 2, 3], "col2": [4, 5, 6]}
-        ),
-        sam_df: pd.DataFrame() = pd.DataFrame(
-            {"col1": [1, 2, 3], "col2": [4, 5, 6]}
-        ),
+        roi_df: pd.DataFrame() = pd.DataFrame({"col1": [1, 2, 3], "col2": [4, 5, 6]}),
+        sam_df: pd.DataFrame() = pd.DataFrame({"col1": [1, 2, 3], "col2": [4, 5, 6]}),
         end_roi_df: pd.DataFrame() = pd.DataFrame(
             {"col1": [1, 2, 3], "col2": [4, 5, 6]}
         ),
-        clips_df:  pd.DataFrame() = pd.DataFrame(
+        clips_df: pd.DataFrame() = pd.DataFrame({"col1": [1, 2, 3], "col2": [4, 5, 6]}),
+        circular_df: pd.DataFrame() = pd.DataFrame(
             {"col1": [1, 2, 3], "col2": [4, 5, 6]}
         ),
-        circular_df:  pd.DataFrame() = pd.DataFrame(
+        clip_roi_df: pd.DataFrame() = pd.DataFrame(
             {"col1": [1, 2, 3], "col2": [4, 5, 6]}
         ),
-        clip_roi_df:  pd.DataFrame() = pd.DataFrame(
+        clip_end_df: pd.DataFrame() = pd.DataFrame(
             {"col1": [1, 2, 3], "col2": [4, 5, 6]}
         ),
-        clip_end_df:  pd.DataFrame() = pd.DataFrame(
-            {"col1": [1, 2, 3], "col2": [4, 5, 6]}
-        ),
-        zscores:  Dict[Union[str, int], List[float]] = {
-            'key1': [1.0, 2.0, 3.0],
+        zscores: Dict[Union[str, int], List[float]] = {
+            "key1": [1.0, 2.0, 3.0],
             2: [4.0, 5.0, 6.0],
-            'key3': [7.0, 8.0, 9.0],
+            "key3": [7.0, 8.0, 9.0],
         },
-        median = 0.0, 
-        mad = 0.0, 
-        all_zscores = False,
+        median=0.0,
+        mad=0.0,
+        all_zscores=False,
         output: Path = Path("hafez_out"),
-        depths:  Dict[Union[str, int], List[float]] = {
-            'key1': [1.0, 2.0, 3.0],
+        depths: Dict[Union[str, int], List[float]] = {
+            "key1": [1.0, 2.0, 3.0],
             2: [4.0, 5.0, 6.0],
-            'key3': [7.0, 8.0, 9.0],
+            "key3": [7.0, 8.0, 9.0],
         },
-        start_time = 0.0,
+        start_time=0.0,
         sam_secondary_df: pd.DataFrame() = pd.DataFrame(
             {"col1": [1, 2, 3], "col2": [4, 5, 6]}
         ),
@@ -83,9 +79,9 @@ class Haf:
         circular_df: pd.DataFrame
             dataframe containing circular contigs
         clip_roi_df: pd.DataFrame
-            dataframe containing processed clips for roi_df 
+            dataframe containing processed clips for roi_df
         clip_end_df: pd.DataFrame
-            dataframe containing processed clips for roi_df 
+            dataframe containing processed clips for roi_df
         zscores: Dict[Union[str, int], List[float]]
             Dict containing zscores
         median: float
@@ -98,7 +94,7 @@ class Haf:
             output directory
         depths: Dict[Union[str, int], List[float]]
             Dict containing depths
-        start_time: float 
+        start_time: float
             start time
         sam_secondary_df:  pd.DataFrame
             dataframe containing SAM file outputvfor secondary alignments
@@ -118,11 +114,6 @@ class Haf:
         self.depths = depths
         self.start_time = start_time
         self.sam_secondary_df = sam_secondary_df
-
-
-
-
-
 
     def get_ROIs(self, cutoff: float, width: int) -> None:
         """
@@ -182,17 +173,23 @@ class Haf:
 
         self.roi_df = pd.DataFrame(roi_dict) if len(roi_dict) > 0 else None
 
-        # exit 
-        if self.roi_df  is  None:
-            exit_error_gracefully(self.output, self.all_zscores, self.depths, self.median, self.mad, self.start_time)
+        # exit
+        if self.roi_df is None:
+            exit_error_gracefully(
+                self.output,
+                self.all_zscores,
+                self.depths,
+                self.median,
+                self.mad,
+                self.start_time,
+            )
             logger.error("No RoIs found at all.")
-        
 
     def join_ROIs(self, join_window: int) -> None:
         """
         Merge close Regions of Interest (ROIs).
 
-        join_window (int): window where ROIs will be merged (10000 default). 
+        join_window (int): window where ROIs will be merged (10000 default).
 
         This method merges ROIs that are close to each other on the same contig. It scans the ROIs in the
         'self.roi_df' DataFrame and combines ROIs that are within 10,000 base pairs of each other along the
@@ -218,8 +215,16 @@ class Haf:
                 (self.roi_df["contig"] == row["contig"])
                 & (
                     (
-                        (self.roi_df["start"].between(row["start"] - join_window, row["end"] + join_window))
-                        | (self.roi_df["end"].between(row["start"] - join_window, row["end"] + join_window))
+                        (
+                            self.roi_df["start"].between(
+                                row["start"] - join_window, row["end"] + join_window
+                            )
+                        )
+                        | (
+                            self.roi_df["end"].between(
+                                row["start"] - join_window, row["end"] + join_window
+                            )
+                        )
                     )
                     | (
                         (
@@ -243,8 +248,12 @@ class Haf:
                     (self.roi_df["contig"] == row["contig"])
                     & (
                         (
-                            self.roi_df["start"].between(min_pos - join_window, max_pos + join_window)
-                            | self.roi_df["end"].between(min_pos - join_window, max_pos + join_window)
+                            self.roi_df["start"].between(
+                                min_pos - join_window, max_pos + join_window
+                            )
+                            | self.roi_df["end"].between(
+                                min_pos - join_window, max_pos + join_window
+                            )
                         )
                         | (
                             (
@@ -263,7 +272,9 @@ class Haf:
                 max_pos = max(sub_list)
                 current_df_len = len(sub_df)
             joined_roi_df["accession"].append(
-                "~".join(sub_df["accession"].iloc[0].split("~")[:-1]) + "~" + str(counter_1)
+                "~".join(sub_df["accession"].iloc[0].split("~")[:-1])
+                + "~"
+                + str(counter_1)
             )
             joined_roi_df["start"].append(min_pos)
             joined_roi_df["end"].append(max_pos)
@@ -276,7 +287,6 @@ class Haf:
             subset=["start", "end", "length", "contig_len", "contig"], keep="first"
         )
         self.roi_df = joined_roi_df
-
 
     def filter_ROIs(self, width: int) -> None:
         """
@@ -295,16 +305,20 @@ class Haf:
             self.filter_ROIs(1000)
         """
 
-
         filtered_roi_df = self.roi_df[self.roi_df["length"] >= width]
 
-        if len(filtered_roi_df) == 0: 
-            exit_error_gracefully(self.output, self.all_zscores, self.depths, self.median, self.mad, self.start_time)
+        if len(filtered_roi_df) == 0:
+            exit_error_gracefully(
+                self.output,
+                self.all_zscores,
+                self.depths,
+                self.median,
+                self.mad,
+                self.start_time,
+            )
             logger.error("After discarding small ROIs, no ROIs found.")
 
         self.roi_df = filtered_roi_df
-
-
 
     def bamfile_to_pandas(self, output: Path, neighbourhood: int) -> None:
         """
@@ -313,13 +327,13 @@ class Haf:
         Parameters:
             output (Path): The output folder where the SAM file is located.
             neighbourhood (int): number of bases before and after the ROI
-        
+
         Returns:
             None
 
         This method parses and processes a sorted BAM file into a Pandas DataFrame. It filters reads based on the ROIs provided
         in 'self.roi_df', ensuring that only reads within the specified regions are included in the output DataFrame.
-        
+
         """
 
         sorted_bam: Path = output / "temp_minimap_sorted.bam"
@@ -366,14 +380,21 @@ class Haf:
         df["pos"] = df["pos"].astype(int)
 
         if df.empty:
-            exit_error_gracefully(self.output, self.all_zscores, self.depths, self.median, self.mad, self.start_time)
+            exit_error_gracefully(
+                self.output,
+                self.all_zscores,
+                self.depths,
+                self.median,
+                self.mad,
+                self.start_time,
+            )
             logger.error("No depth found at all positions.")
 
         self.sam_df = df
 
-
-
-    def find_contig_end_rois(self, neighbourhood: int) -> Tuple[Union[pd.DataFrame, str], Union[pd.DataFrame, str]]:
+    def find_contig_end_rois(
+        self, neighbourhood: int
+    ) -> Tuple[Union[pd.DataFrame, str], Union[pd.DataFrame, str]]:
         """
         Find ROIs at the ends of contigs and categorize them.
 
@@ -398,7 +419,8 @@ class Haf:
                 (self.roi_df["start"].between(0, neighbourhood))
                 | (
                     self.roi_df["end"].between(
-                        self.roi_df["contig_len"] - neighbourhood, self.roi_df["contig_len"]
+                        self.roi_df["contig_len"] - neighbourhood,
+                        self.roi_df["contig_len"],
                     )
                 )
             )
@@ -409,7 +431,8 @@ class Haf:
                 (self.roi_df["start"].between(0, neighbourhood))
                 | (
                     self.roi_df["end"].between(
-                        self.roi_df["contig_len"] - neighbourhood, self.roi_df["contig_len"]
+                        self.roi_df["contig_len"] - neighbourhood,
+                        self.roi_df["contig_len"],
                     )
                 )
             )
@@ -432,7 +455,14 @@ class Haf:
         self.roi_df["end_info"] = np.nan
 
         if len(self.roi_df) < 1:
-            exit_error_gracefully(self.output, self.all_zscores, self.depths, self.median, self.mad, self.start_time)
+            exit_error_gracefully(
+                self.output,
+                self.all_zscores,
+                self.depths,
+                self.median,
+                self.mad,
+                self.start_time,
+            )
             logger.error("Error with finding ROIs that constitute a whole contig.")
 
         if len(end_df) < 1:
@@ -441,8 +471,9 @@ class Haf:
         # end_df saved to the class
         self.end_roi_df = end_df
 
-
-    def find_far_reads(self, width: int, neighbourhood: int) -> Union[pd.DataFrame, str]:
+    def find_far_reads(
+        self, width: int, neighbourhood: int
+    ) -> Union[pd.DataFrame, str]:
         """
         Find reads that are far from ROIs and update the ROI DataFrame.
 
@@ -485,7 +516,9 @@ class Haf:
             sub_df = sub_df[sub_df.duplicated(subset=["qname"], keep=False)]
 
             if (len(sub_df) / 2) < 1:
-                self.roi_df = self.roi_df[self.roi_df["accession"] != row["accession"]].copy()
+                self.roi_df = self.roi_df[
+                    self.roi_df["accession"] != row["accession"]
+                ].copy()
             else:
                 self.roi_df.loc[index, "far_start"] = np.median(
                     sub_df["pos"][sub_df["pos"] < center].copy()
@@ -496,8 +529,9 @@ class Haf:
                 self.roi_df.loc[index, "far_count_pairs"] = len(sub_df.copy()) / 2
 
         if len(self.roi_df) < 1:
-            logger.info("No ROIs with evidence of pairs of reads that are distant from each other.")
-
+            logger.info(
+                "No ROIs with evidence of pairs of reads that are distant from each other."
+            )
 
     def find_contig_end_rois_again(self, neighbourhood: int) -> None:
         """
@@ -522,7 +556,8 @@ class Haf:
                 (self.roi_df["start_pos"].between(0, neighbourhood))
                 | (
                     self.roi_df["end_pos"].between(
-                        self.roi_df["contig_len"] - neighbourhood, self.roi_df["contig_len"]
+                        self.roi_df["contig_len"] - neighbourhood,
+                        self.roi_df["contig_len"],
                     )
                 )
             )
@@ -533,7 +568,8 @@ class Haf:
                 (self.roi_df["start_pos"].between(0, neighbourhood))
                 | (
                     self.roi_df["end_pos"].between(
-                        self.roi_df["contig_len"] - neighbourhood, self.roi_df["contig_len"]
+                        self.roi_df["contig_len"] - neighbourhood,
+                        self.roi_df["contig_len"],
                     )
                 )
             )
@@ -545,7 +581,9 @@ class Haf:
             ):
                 end_df.loc[index, "end_info"] = "whole"
             elif (0 <= row["start_pos"] <= neighbourhood) and (
-                not row["contig_len"] - neighbourhood <= row["end_pos"] <= row["contig_len"]
+                not row["contig_len"] - neighbourhood
+                <= row["end_pos"]
+                <= row["contig_len"]
             ):
                 end_df.loc[index, "end_info"] = "left"
             elif (not 0 <= row["start_pos"] <= neighbourhood) and (
@@ -593,25 +631,23 @@ class Haf:
 
         df = pd.concat(
             pool.map(
-                partial(multiprocess_find_soft_clippings, clips=clips, width=width, neighbourhood=neighbourhood),
+                partial(
+                    multiprocess_find_soft_clippings,
+                    clips=clips,
+                    width=width,
+                    neighbourhood=neighbourhood,
+                ),
                 chunks,
             )
         )
 
         df = df.reset_index(drop=True)
-        
+
         self.roi_df = df
         self.clips_df = clips
 
-
-
     def calc_roi_Z_medians(
-        self,
-        cov,
-        median,
-        mad,
-        median_z_cutoff,
-        threads
+        self, cov, median, mad, median_z_cutoff, threads
     ) -> pd.DataFrame:
         """
         Calculate the median Z-scores for each region of interest (ROI).
@@ -650,7 +686,6 @@ class Haf:
             )
         )
 
-
     def filter_Z_medians(self) -> None:
         """
         Filter regions of interest (ROIs) by Z-score.
@@ -664,7 +699,8 @@ class Haf:
         """
 
         both_ends_df = self.roi_df[
-            (self.roi_df["end_info"] == "whole") & (self.roi_df["longest_below_z"] < 7500)
+            (self.roi_df["end_info"] == "whole")
+            & (self.roi_df["longest_below_z"] < 7500)
         ]
         left_df = self.roi_df[
             (self.roi_df["end_info"] == "left")
@@ -702,9 +738,15 @@ class Haf:
         self.roi_df = self.roi_df.reset_index(drop=True)
 
         if len(self.roi_df) < 1:
-            exit_error_gracefully(self.output, self.all_zscores, self.depths, self.median, self.mad, self.start_time)
+            exit_error_gracefully(
+                self.output,
+                self.all_zscores,
+                self.depths,
+                self.median,
+                self.mad,
+                self.start_time,
+            )
             logger.error("No ROIs found after Z-score filtering.")
-
 
     def keep_only_x_best(self, keep_threshold):
         """
@@ -741,8 +783,6 @@ class Haf:
         self.roi_df = pd.concat(df_list)
         self.roi_df = self.roi_df.reset_index(drop=True)
 
-
-
     def check_for_circular_roi(self) -> None:
         """
         Check for circular regions of interest (ROIs) in the context of plasmid phages.
@@ -776,7 +816,8 @@ class Haf:
             if start < 1000:
                 read_list = list(
                     self.sam_df["qname"][
-                        (self.sam_df["rname"] == contig) & (self.sam_df["pos"].between(0, 1000))
+                        (self.sam_df["rname"] == contig)
+                        & (self.sam_df["pos"].between(0, 1000))
                     ]
                 )
             elif end > contig_len - 1000:
@@ -788,7 +829,8 @@ class Haf:
                 )
 
             sub_df = self.sam_df[
-                (self.sam_df["qname"].isin(read_list)) & (self.sam_df["rname"] == contig)
+                (self.sam_df["qname"].isin(read_list))
+                & (self.sam_df["rname"] == contig)
             ]
 
             sub_df = sub_df[
@@ -858,7 +900,14 @@ class Haf:
         self.roi_df = self.roi_df[self.roi_df["circular"] == False]
 
         if len(self.roi_df) < 1:
-            exit_error_gracefully(self.output, self.all_zscores, self.depths, self.median, self.mad, self.start_time)
+            exit_error_gracefully(
+                self.output,
+                self.all_zscores,
+                self.depths,
+                self.median,
+                self.mad,
+                self.start_time,
+            )
             logger.error("Error in finding circular ROIs (possible phage plasmids).")
         if len(self.circular_df) < 1:
             self.circular_df = None
@@ -867,12 +916,7 @@ class Haf:
             for index, row in self.circular_df.iterrows():
                 self.circular_df.loc[index, "contig_split"] = np.nan
 
-
-    def collecting_clipped_reads(
-        self,
-        output: Path,
-        threads: int
-    ) -> None:
+    def collecting_clipped_reads(self, output: Path, threads: int) -> None:
         """
         Collect soft clipped reads and write them to a FASTQ file.
 
@@ -897,8 +941,6 @@ class Haf:
         self.roi_df = pd.concat([item[1] for item in values])
         clipped_reads: Path = output / "temp_soft_clipped.fastq"
         SeqIO.write(read_list, clipped_reads, "fastq")
-        
-
 
     def map_clipped_reads(self, output, threads, genome, memory_limit, logdir) -> None:
         """
@@ -921,37 +963,34 @@ class Haf:
         out_sorted_bam: Path = output / "temp_minimap_clipped_sorted.bam"
 
         minimap2 = ExternalTool(
-        tool="minimap2",
-        input=f"",
-        output=f"",
-        params=f'-ax sr {genome} {clipped_reads} -t {str(threads)} -o {out_sam} ',
-        logdir=logdir,
-    )
-        
+            tool="minimap2",
+            input=f"",
+            output=f"",
+            params=f"-ax sr {genome} {clipped_reads} -t {str(threads)} -o {out_sam} ",
+            logdir=logdir,
+        )
+
         ExternalTool.run_tool(minimap2)
 
-
         samtools_sort = ExternalTool(
-        tool="samtools",
-        input=f"",
-        output=f"",
-        params=f'sort  -@ {str(threads)} -m {memory_limit} -o {out_sorted_bam} {out_sam} ',
-        logdir=logdir,
-    )
-        
+            tool="samtools",
+            input=f"",
+            output=f"",
+            params=f"sort  -@ {str(threads)} -m {memory_limit} -o {out_sorted_bam} {out_sam} ",
+            logdir=logdir,
+        )
+
         ExternalTool.run_tool(samtools_sort)
 
         samtools_index = ExternalTool(
-        tool="samtools",
-        input=f"",
-        output=f"",
-        params=f'index  -@ {str(threads)} -b {out_sorted_bam} ',
-        logdir=logdir,
-    )
-        
+            tool="samtools",
+            input=f"",
+            output=f"",
+            params=f"index  -@ {str(threads)} -b {out_sorted_bam} ",
+            logdir=logdir,
+        )
+
         ExternalTool.run_tool(samtools_index)
-
-
 
     def seperate_rois_near_ends(self) -> None:
         """
@@ -982,7 +1021,8 @@ class Haf:
                     (self.roi_df["start_pos"].between(0, 2000))
                     | (
                         self.roi_df["end_pos"].between(
-                            self.roi_df["contig_len"] - 2000, self.roi_df["contig_len"] + 1
+                            self.roi_df["contig_len"] - 2000,
+                            self.roi_df["contig_len"] + 1,
                         )
                     )
                 )
@@ -1005,12 +1045,19 @@ class Haf:
         self.roi_df["end_info"] = np.nan
         if len(self.roi_df) < 1:
             self.roi_df = None
-            exit_error_gracefully(self.output, self.all_zscores, self.depths, self.median, self.mad, self.start_time)
-            logger.error("Error with finding ROIs near the end of contigs.No ROIs found.")
+            exit_error_gracefully(
+                self.output,
+                self.all_zscores,
+                self.depths,
+                self.median,
+                self.mad,
+                self.start_time,
+            )
+            logger.error(
+                "Error with finding ROIs near the end of contigs.No ROIs found."
+            )
         if len(self.end_roi_df) < 1:
             self.end_roi_df = None
-            
-
 
     def process_clip_sam(self, output: str) -> None:
         """
@@ -1023,9 +1070,7 @@ class Haf:
             None
         """
         out_sorted_bam: Path = output / "temp_minimap_clipped_sorted.bam"
-        samfile = pysam.AlignmentFile(
-            out_sorted_bam, "rb"
-        )
+        samfile = pysam.AlignmentFile(out_sorted_bam, "rb")
         df_dict = {
             "qname": [],
             "rname": [],
@@ -1063,7 +1108,6 @@ class Haf:
 
         self.clip_roi_df = df
 
-
     def get_clip_pos(self, output: Path) -> None:
         """
         Get positions for clipped ends (contained ROIs) and calculate clip counts.
@@ -1077,9 +1121,7 @@ class Haf:
 
         out_sorted_bam: Path = output / "temp_minimap_clipped_sorted.bam"
 
-        samfile = pysam.AlignmentFile(
-            out_sorted_bam, "rb"
-        )
+        samfile = pysam.AlignmentFile(out_sorted_bam, "rb")
         names = pysam.IndexedReads(samfile)
         names.build()
         self.roi_df["start-end_clip_count"] = np.nan
@@ -1101,7 +1143,11 @@ class Haf:
             ]
             end_mapped_df = clip_df2[
                 (clip_df2["qname"].str.split("__").str[0] == end_name)
-                & (clip_df2["pos"].between(row["start_pos"] - 200, row["start_pos"] + 200))
+                & (
+                    clip_df2["pos"].between(
+                        row["start_pos"] - 200, row["start_pos"] + 200
+                    )
+                )
             ]
             if (len(start_mapped_df) >= 10) and (len(end_mapped_df) >= 10):
                 self.roi_df.loc[index, "start-end_clip_count"] = len(end_mapped_df)
@@ -1119,10 +1165,15 @@ class Haf:
                         row, index, self.clip_roi_df, start_name, names, "start"
                     )
                     self.roi_df.loc[index, "total_clip_count"] = (
-                        10 + len(start_mapped_df) + row["start_count"] + row["end_count"]
+                        10
+                        + len(start_mapped_df)
+                        + row["start_count"]
+                        + row["end_count"]
                     )  # added these last 2 to test something
                 elif (len(end_mapped_df) < 10) and (len(start_mapped_df) >= 10):
-                    self.roi_df.loc[index, "end-start_clip_count"] = len(start_mapped_df)
+                    self.roi_df.loc[index, "end-start_clip_count"] = len(
+                        start_mapped_df
+                    )
                     self.roi_df.loc[index, "start-end_clip_count"] = check_read_lengths(
                         row, index, self.clip_roi_df, end_name, names, "end"
                     )
@@ -1134,17 +1185,23 @@ class Haf:
             & (self.roi_df["end-start_clip_count"].notna())
         ]
         if len(self.roi_df) < 1:
-            exit_error_gracefully(self.output, self.all_zscores, self.depths, self.median, self.mad, self.start_time)
+            exit_error_gracefully(
+                self.output,
+                self.all_zscores,
+                self.depths,
+                self.median,
+                self.mad,
+                self.start_time,
+            )
             logger.error("Error with finding ROIs with clipped reads. No ROIs found.")
 
-        self.roi_df = self.roi_df.sort_values(by=["roi", "total_clip_count"], ascending=False)
+        self.roi_df = self.roi_df.sort_values(
+            by=["roi", "total_clip_count"], ascending=False
+        )
         df_list = []
         for i in self.roi_df["roi"].unique():
             df_list.append(self.roi_df[self.roi_df["roi"] == i].iloc[[0]])
         self.roi_df = pd.concat(df_list)
-
-
-
 
     def process_clip_sam_end_rois(self, output: str):
         """
@@ -1158,9 +1215,7 @@ class Haf:
             None
         """
         out_sorted_bam: Path = output / "temp_minimap_clipped_sorted.bam"
-        samfile = pysam.AlignmentFile(
-            out_sorted_bam, "rb"
-        )
+        samfile = pysam.AlignmentFile(out_sorted_bam, "rb")
         names = pysam.IndexedReads(samfile)
         names.build()
         df_dict = {
@@ -1196,7 +1251,9 @@ class Haf:
                     pass
             end_list = np.core.defchararray.add(
                 "{}~{}__".format(row["roi"], str(row["end_pos"])),
-                np.arange(row["start_count"], row["start_count"] + row["end_count"] + 1, 1)
+                np.arange(
+                    row["start_count"], row["start_count"] + row["end_count"] + 1, 1
+                )
                 .astype(int)
                 .astype(str),
             )
@@ -1225,16 +1282,12 @@ class Haf:
         df["pos"] = df["pos"].astype(int)
         self.clip_end_df = df
 
-
-    def get_clip_pos_end_rois(
-        self,
-        raw_seq_dict: Dict[str, Any]
-    ) -> None:
+    def get_clip_pos_end_rois(self, raw_seq_dict: Dict[str, Any]) -> None:
         """
         Get positions for clipped ends (end rois).
 
         Args:
-            raw_seq_dict (Dict[str, Any]): Dictionary of sequences. 
+            raw_seq_dict (Dict[str, Any]): Dictionary of sequences.
 
         Returns:
             None
@@ -1267,8 +1320,12 @@ class Haf:
             start_name = row["roi"] + "~" + str(row["start_pos"])
             end_name = row["roi"] + "~" + str(row["end_pos"])
 
-            start_df = self.clip_end_df[self.clip_end_df["qname"].str.split("__").str[0] == start_name].copy()
-            end_df = self.clip_end_df[self.clip_end_df["qname"].str.split("__").str[0] == end_name].copy()
+            start_df = self.clip_end_df[
+                self.clip_end_df["qname"].str.split("__").str[0] == start_name
+            ].copy()
+            end_df = self.clip_end_df[
+                self.clip_end_df["qname"].str.split("__").str[0] == end_name
+            ].copy()
 
             start_df["query"] = start_df["qname"].str.split("__").str[0].copy()
             start_df = start_df.groupby(["query", "rname"])["qname"].count()
@@ -1289,8 +1346,7 @@ class Haf:
                     start_contig_length = len(raw_seq_dict[i].seq)
                     sub_df2 = sub_df.groupby(
                         pd.cut(
-                            sub_df["pos"],
-                            np.arange(-1, start_contig_length + 201, 200)
+                            sub_df["pos"], np.arange(-1, start_contig_length + 201, 200)
                         )
                     )["qname"].count()
                     sub_df2 = sub_df2[sub_df2 >= 10]
@@ -1301,7 +1357,9 @@ class Haf:
                     sub_df2["query"] = (
                         start_df["query"].str.split("~").str[:4].str.join("~")
                     )
-                    sub_df2 = sub_df2.sort_values(by=["counts"], ascending=False).iloc[[0]]
+                    sub_df2 = sub_df2.sort_values(by=["counts"], ascending=False).iloc[
+                        [0]
+                    ]
 
                     for ind, r in sub_df2.iterrows():
                         if not isinstance(r["pos"], float):
@@ -1316,8 +1374,12 @@ class Haf:
                             sub_df2["left"].iloc[0], sub_df2["right"].iloc[0]
                         )
                     ]
-                    self.end_roi_df.loc[index, "right_end_pos"] = np.median(sub_df["pos"])
-                    self.end_roi_df.loc[index, "right_end_count"] = sub_df2["counts"].iloc[0]
+                    self.end_roi_df.loc[index, "right_end_pos"] = np.median(
+                        sub_df["pos"]
+                    )
+                    self.end_roi_df.loc[index, "right_end_count"] = sub_df2[
+                        "counts"
+                    ].iloc[0]
                     self.end_roi_df.loc[index, "right_end_rname"] = i
 
                 end_df = end_df.reset_index(name="counts")
@@ -1330,8 +1392,7 @@ class Haf:
                     end_contig_length = len(raw_seq_dict[i].seq)
                     sub_df2 = sub_df.groupby(
                         pd.cut(
-                            sub_df["pos"],
-                            np.arange(-1, end_contig_length + 201, 200)
+                            sub_df["pos"], np.arange(-1, end_contig_length + 201, 200)
                         )
                     )["qname"].count()
                     sub_df2 = sub_df2[sub_df2 >= 10]
@@ -1339,8 +1400,12 @@ class Haf:
                     sub_df2["end_query_pos"] = (
                         end_df["query"].str.split("~").str[-1].astype(int)
                     )
-                    sub_df2["query"] = end_df["query"].str.split("~").str[:4].str.join("~")
-                    sub_df2 = sub_df2.sort_values(by=["counts"], ascending=False).iloc[[0]]
+                    sub_df2["query"] = (
+                        end_df["query"].str.split("~").str[:4].str.join("~")
+                    )
+                    sub_df2 = sub_df2.sort_values(by=["counts"], ascending=False).iloc[
+                        [0]
+                    ]
 
                     for ind, r in sub_df2.iterrows():
                         sub_df2.loc[ind, "left"] = r["pos"].left
@@ -1351,8 +1416,12 @@ class Haf:
                             sub_df2["left"].iloc[0], sub_df2["right"].iloc[0]
                         )
                     ]
-                    self.end_roi_df.loc[index, "left_end_pos"] = np.median(sub_df["pos"])
-                    self.end_roi_df.loc[index, "left_end_count"] = sub_df2["counts"].iloc[0]
+                    self.end_roi_df.loc[index, "left_end_pos"] = np.median(
+                        sub_df["pos"]
+                    )
+                    self.end_roi_df.loc[index, "left_end_count"] = sub_df2[
+                        "counts"
+                    ].iloc[0]
                     self.end_roi_df.loc[index, "left_end_rname"] = i
 
             else:
@@ -1368,8 +1437,6 @@ class Haf:
         if len(self.end_roi_df) < 1:
             logger.into("No ROIs spanning the ends with clipped reads.")
 
-
-
     def filter_by_end_status(self) -> pd.DataFrame:
         """
         Filter end rois based on end_info and contig matching.
@@ -1378,23 +1445,23 @@ class Haf:
             pd.DataFrame: DataFrame with filtered ROI information.
         """
 
-        
         for index, row in self.end_roi_df.iterrows():
             if (row["end_info"] == "whole") and (
                 (row["contig"] == row["right_end_rname"])
                 or (row["contig"] == row["left_end_rname"])
             ):
                 self.end_roi_df.drop(index, inplace=True)
-            elif (row["end_info"] == "left") and (row["contig"] == row["left_end_rname"]):
+            elif (row["end_info"] == "left") and (
+                row["contig"] == row["left_end_rname"]
+            ):
                 self.end_roi_df.drop(index, inplace=True)
-            elif (row["end_info"] == "right") and (row["contig"] == row["right_end_rname"]):
+            elif (row["end_info"] == "right") and (
+                row["contig"] == row["right_end_rname"]
+            ):
                 self.end_roi_df.drop(index, inplace=True)
-        
+
         if len(self.end_roi_df) < 1:
             logger.info("No ROIs spanning the ends with clipped reads.")
-
-        
-
 
     def reformat_end_roi_tables(self, seq: Dict[str, Any]) -> None:
         """
@@ -1445,7 +1512,6 @@ class Haf:
     long
     """
 
-
     def bamfile_to_pandas(self, output: Path, neighbourhood: int) -> None:
         """
         Parse and process a sorted BAM file into a Pandas DataFrame.
@@ -1453,13 +1519,13 @@ class Haf:
         Parameters:
             output (Path): The output folder where the SAM file is located.
             neighbourhood (int): number of bases before and after the ROI
-        
+
         Returns:
             None
 
         This method parses and processes a sorted BAM file into a Pandas DataFrame. It filters reads based on the ROIs provided
         in 'self.roi_df', ensuring that only reads within the specified regions are included in the output DataFrame.
-        
+
         """
 
         sorted_bam: Path = output / "temp_minimap_sorted.bam"
@@ -1506,12 +1572,19 @@ class Haf:
         df["pos"] = df["pos"].astype(int)
 
         if df.empty:
-            exit_error_gracefully(self.output, self.all_zscores, self.depths, self.median, self.mad, self.start_time)
+            exit_error_gracefully(
+                self.output,
+                self.all_zscores,
+                self.depths,
+                self.median,
+                self.mad,
+                self.start_time,
+            )
             logger.error("No depth found at all positions.")
 
         self.sam_df = df
 
-#### do i need the secondaries?
+    #### do i need the secondaries?
 
     def bamfile_to_pandas_long(self, output: Path, neighbourhood: int) -> None:
         """
@@ -1520,7 +1593,7 @@ class Haf:
         Parameters:
             output (Path): The output folder where the SAM file is located.
             neighbourhood (int): number of bases before and after the ROI
-        
+
         Returns:
             None
 
@@ -1533,71 +1606,125 @@ class Haf:
         bamfile = pysam.AlignmentFile(sorted_bam, "rb")
 
         df_dict: Dict[str, list] = {
-            'qname':[], 'rname':[], 'pos':[], 'cigar':[],'tlen':[],'seq':[],'flag':[],'pnext':[], 'qqual':[], 'reference_end':[], 'reference_start': []
+            "qname": [],
+            "rname": [],
+            "pos": [],
+            "cigar": [],
+            "tlen": [],
+            "seq": [],
+            "flag": [],
+            "pnext": [],
+            "qqual": [],
+            "reference_end": [],
+            "reference_start": [],
         }
         df_dict_secondary: Dict[str, list] = {
-            'qname':[], 'rname':[], 'pos':[], 'cigar':[],'tlen':[],'seq':[],'flag':[],'pnext':[], 'qqual':[], 'reference_end':[], 'reference_start': []
+            "qname": [],
+            "rname": [],
+            "pos": [],
+            "cigar": [],
+            "tlen": [],
+            "seq": [],
+            "flag": [],
+            "pnext": [],
+            "qqual": [],
+            "reference_end": [],
+            "reference_start": [],
         }
 
         primary_flags = [0, 16, 2048, 2064]
         secondary_flags = [256, 272]
         for index, row in self.roi_df.iterrows():
-            contig = row['accession'].split('~')[0]
-            start = row['start'] - neighbourhood
+            contig = row["accession"].split("~")[0]
+            start = row["start"] - neighbourhood
             if start < 0:
                 start = 0
-            end = row['end'] + neighbourhood
-            if end > row['contig_len']:
-                end = row['contig_len']
-        # ONT reads - issue with non-primary alignments
-        # keep only 0 (mapped fwd) or 16 (mapped rev)
+            end = row["end"] + neighbourhood
+            if end > row["contig_len"]:
+                end = row["contig_len"]
+            # ONT reads - issue with non-primary alignments
+            # keep only 0 (mapped fwd) or 16 (mapped rev)
             for reads in bamfile.fetch(contig, start, end):
-                if reads.flag in primary_flags: # keeps all the primary and supp reads
-                    df_dict['qname'].append(reads.query_name)
-                    df_dict['rname'].append(contig)
-                    df_dict['pos'].append(reads.reference_start)
-                    df_dict['cigar'].append(reads.cigarstring)
-                    df_dict['tlen'].append(reads.template_length)
-                    df_dict['seq'].append(reads.query_sequence)
-                    df_dict['flag'].append(reads.flag)
-                    df_dict['pnext'].append(reads.next_reference_start)
-                    df_dict['reference_end'].append(reads.reference_end)
-                    df_dict['reference_start'].append(reads.reference_start)
-                    df_dict['qqual'].append(reads.query_qualities.tolist())
+                if reads.flag in primary_flags:  # keeps all the primary and supp reads
+                    df_dict["qname"].append(reads.query_name)
+                    df_dict["rname"].append(contig)
+                    df_dict["pos"].append(reads.reference_start)
+                    df_dict["cigar"].append(reads.cigarstring)
+                    df_dict["tlen"].append(reads.template_length)
+                    df_dict["seq"].append(reads.query_sequence)
+                    df_dict["flag"].append(reads.flag)
+                    df_dict["pnext"].append(reads.next_reference_start)
+                    df_dict["reference_end"].append(reads.reference_end)
+                    df_dict["reference_start"].append(reads.reference_start)
+                    df_dict["qqual"].append(reads.query_qualities.tolist())
                 elif reads.flag in primary_flags:
-                    df_dict_secondary['qname'].append(reads.query_name)
-                    df_dict_secondary['rname'].append(contig)
-                    df_dict_secondary['pos'].append(reads.reference_start)
-                    df_dict_secondary['cigar'].append(reads.cigarstring)
-                    df_dict_secondary['tlen'].append(reads.template_length)
-                    df_dict_secondary['seq'].append(reads.query_sequence)
-                    df_dict_secondary['flag'].append(reads.flag)
-                    df_dict_secondary['pnext'].append(reads.next_reference_start)
-                    df_dict_secondary['reference_end'].append(reads.reference_end)
-                    df_dict_secondary['reference_start'].append(reads.reference_start)
-                    df_dict_secondary['qqual'].append(reads.query_qualities.tolist())
+                    df_dict_secondary["qname"].append(reads.query_name)
+                    df_dict_secondary["rname"].append(contig)
+                    df_dict_secondary["pos"].append(reads.reference_start)
+                    df_dict_secondary["cigar"].append(reads.cigarstring)
+                    df_dict_secondary["tlen"].append(reads.template_length)
+                    df_dict_secondary["seq"].append(reads.query_sequence)
+                    df_dict_secondary["flag"].append(reads.flag)
+                    df_dict_secondary["pnext"].append(reads.next_reference_start)
+                    df_dict_secondary["reference_end"].append(reads.reference_end)
+                    df_dict_secondary["reference_start"].append(reads.reference_start)
+                    df_dict_secondary["qqual"].append(reads.query_qualities.tolist())
 
         df = pd.DataFrame.from_dict(df_dict)
-        df = df.drop_duplicates(subset = ['qname', 'rname', 'pos', 'cigar', 'tlen', 'seq', 'flag', 'pnext', 'reference_end', 'reference_start'], keep='first')
-        df['tlen'] = df['tlen'].astype(int)
-        df['pos'] = df['pos'].astype(int)
+        df = df.drop_duplicates(
+            subset=[
+                "qname",
+                "rname",
+                "pos",
+                "cigar",
+                "tlen",
+                "seq",
+                "flag",
+                "pnext",
+                "reference_end",
+                "reference_start",
+            ],
+            keep="first",
+        )
+        df["tlen"] = df["tlen"].astype(int)
+        df["pos"] = df["pos"].astype(int)
 
         sam_secondary_df = pd.DataFrame.from_dict(df_dict_secondary)
-        sam_secondary_df = sam_secondary_df.drop_duplicates(subset = ['qname', 'rname', 'pos', 'cigar', 'tlen', 'seq', 'flag', 'pnext', 'reference_end', 'reference_start'], keep='first')
-        sam_secondary_df['tlen'] = sam_secondary_df['tlen'].astype(int)
-        sam_secondary_df['pos'] = sam_secondary_df['pos'].astype(int)
+        sam_secondary_df = sam_secondary_df.drop_duplicates(
+            subset=[
+                "qname",
+                "rname",
+                "pos",
+                "cigar",
+                "tlen",
+                "seq",
+                "flag",
+                "pnext",
+                "reference_end",
+                "reference_start",
+            ],
+            keep="first",
+        )
+        sam_secondary_df["tlen"] = sam_secondary_df["tlen"].astype(int)
+        sam_secondary_df["pos"] = sam_secondary_df["pos"].astype(int)
 
         if df.empty:
-            exit_error_gracefully(self.output, self.all_zscores, self.depths, self.median, self.mad, self.start_time)
+            exit_error_gracefully(
+                self.output,
+                self.all_zscores,
+                self.depths,
+                self.median,
+                self.mad,
+                self.start_time,
+            )
             logger.error("No depth found at all positions.")
         # not big a deal if secondary df empty
-        # if sam_secondary_df.empty: 
+        # if sam_secondary_df.empty:
         #     logger.warning("No secondary alignment depth found at all positions.")
 
         self.sam_df = df
         self.sam_secondary_df = sam_secondary_df
 
- 
     def find_multimapped_reads_long(self, neighbourhood: int, min_reads: int) -> None:
         """
         Identify ROIs with multiple mapped long reads that span both ends.
@@ -1611,23 +1738,35 @@ class Haf:
         """
 
         # gets all the reads that have more than 1 primary or supplementary mapping
-        df = self.sam_df[self.sam_df.duplicated('qname', keep=False) == True]
+        df = self.sam_df[self.sam_df.duplicated("qname", keep=False) == True]
         # loop over each roi
         for index, row in self.roi_df.iterrows():
-            center = row['center']
+            center = row["center"]
             # gets all the reads in the vicinity of the start and end of the ROI
-            sub_df = df[(df['rname'] == row['contig']) &
-                        (((df['pos'].between(row['start'] - neighbourhood, center)) | (df['pnext'].between(center, row['end'] + neighbourhood))) |
-                        ((df['pnext'].between(row['start'] - neighbourhood, center)) | (df['pos'].between(center, row['end'] + neighbourhood))))].copy()
-            # keep only the dupes again 
-            sub_df = sub_df[sub_df.duplicated('qname', keep=False) == True]
+            sub_df = df[
+                (df["rname"] == row["contig"])
+                & (
+                    (
+                        (df["pos"].between(row["start"] - neighbourhood, center))
+                        | (df["pnext"].between(center, row["end"] + neighbourhood))
+                    )
+                    | (
+                        (df["pnext"].between(row["start"] - neighbourhood, center))
+                        | (df["pos"].between(center, row["end"] + neighbourhood))
+                    )
+                )
+            ].copy()
+            # keep only the dupes again
+            sub_df = sub_df[sub_df.duplicated("qname", keep=False) == True]
             # collect all starts and ends
             # automatically sorts the list from largest to smalles
-            starts = sub_df['reference_start'].value_counts(dropna=False)
-            ends = sub_df['reference_end'].value_counts(dropna=False)
+            starts = sub_df["reference_start"].value_counts(dropna=False)
+            ends = sub_df["reference_end"].value_counts(dropna=False)
             # Don't keep empty ones
-            if (len(sub_df)/2) < 1:
-                self.roi_df = self.roi_df[self.roi_df['accession'] != row['accession']].copy()
+            if (len(sub_df) / 2) < 1:
+                self.roi_df = self.roi_df[
+                    self.roi_df["accession"] != row["accession"]
+                ].copy()
             else:
                 # get the top hit
                 start_coverage = int(starts.iloc[0])
@@ -1637,24 +1776,32 @@ class Haf:
                 # need more than min_reads coverage at the start and end (default min_reads = 5)
                 # skips the row if there is less than 5 at either end
                 if start_coverage < min_reads or end_coverage < min_reads:
-                    self.roi_df = self.roi_df[self.roi_df['accession'] != row['accession']].copy()
+                    self.roi_df = self.roi_df[
+                        self.roi_df["accession"] != row["accession"]
+                    ].copy()
                 else:
-                # denotes the read with likely_start and likely_end
-                    self.roi_df.loc[index,'likely_start'] = start_position
-                    self.roi_df.loc[index,'likely_end'] = end_position
-                    self.roi_df.loc[index,'start_count'] = start_coverage
-                    self.roi_df.loc[index,'end_count'] = end_coverage
+                    # denotes the read with likely_start and likely_end
+                    self.roi_df.loc[index, "likely_start"] = start_position
+                    self.roi_df.loc[index, "likely_end"] = end_position
+                    self.roi_df.loc[index, "start_count"] = start_coverage
+                    self.roi_df.loc[index, "end_count"] = end_coverage
         if len(self.roi_df) < 1:
-            exit_error_gracefully(self.output, self.all_zscores, self.depths, self.median, self.mad, self.start_time)
-            logger.exit(f"No ROIs found with at least {min_reads} long reads that span both ends.")
+            exit_error_gracefully(
+                self.output,
+                self.all_zscores,
+                self.depths,
+                self.median,
+                self.mad,
+                self.start_time,
+            )
+            logger.exit(
+                f"No ROIs found with at least {min_reads} long reads that span both ends."
+            )
         else:
-            logger.info(f"{len(self.roi_df)} ROI(s) found with at least {min_reads} long reads that span both ends.")
+            logger.info(
+                f"{len(self.roi_df)} ROI(s) found with at least {min_reads} long reads that span both ends."
+            )
         # return the roi_df
-
-
-
-
-
 
 
 """
@@ -1680,7 +1827,7 @@ def check_read_lengths(row, index, clip_df, side_name, names, side):
         "roi": [],
         "seq_len": [],
     }
-    
+
     start_list = np.core.defchararray.add(
         "{}~{}__".format(row["roi"], str(row["start_pos"])),
         np.arange(1, row["start_count"] + 1, 1).astype(int).astype(str),
@@ -1737,7 +1884,6 @@ def check_read_lengths(row, index, clip_df, side_name, names, side):
             len(end_df[end_df["seq_len"] >= 35]) < 10
         ):  ##### this is to make sure that any reads that didnt have clipped sections that were no long enough to be mapped are not unfairly excluded from the search
             return 10
-
 
 
 def fix_table_whole(index, row, roi_df, seq):
@@ -1819,7 +1965,6 @@ def fix_table_right(index, row, roi_df, seq):
     return roi_df
 
 
-
 def get_longest_len_z(z, cutoff):
     x = {"start": [], "end": []}
     above_threshold = np.diff(
@@ -1868,14 +2013,9 @@ def multiprocessing_calc_roi_z_medians(roi_df, depths, median, mad, median_z_cut
     return roi_df
 
 
-
-
-
-
-
-
-
-def multiprocess_find_soft_clippings(roi_df: pd.DataFrame, clips: pd.DataFrame, width: int, neighbourhood: int) -> pd.DataFrame:
+def multiprocess_find_soft_clippings(
+    roi_df: pd.DataFrame, clips: pd.DataFrame, width: int, neighbourhood: int
+) -> pd.DataFrame:
     """
     Find soft clippings within ROIs and create a DataFrame with the results.
 
@@ -1909,7 +2049,11 @@ def multiprocess_find_soft_clippings(roi_df: pd.DataFrame, clips: pd.DataFrame, 
         s_list = []
         sub_df = clips[
             (clips["rname"] == row["contig"])
-            & (clips["pos"].between(row["start"] - neighbourhood, row["end"] + neighbourhood))
+            & (
+                clips["pos"].between(
+                    row["start"] - neighbourhood, row["end"] + neighbourhood
+                )
+            )
         ]
         for i, r in sub_df.iterrows():
             M = re.sub("[0-9]+", "", r["cigar"]).find("M")

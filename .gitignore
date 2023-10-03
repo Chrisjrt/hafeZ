@@ -3,3 +3,7 @@ hZ/__pycache__
 test/
 hafeZ_db/
 stdin.hhr
+.DS_Store
+
+test_out/
+test_out/*

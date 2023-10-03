@@ -171,6 +171,8 @@ def get_ZScores(depths: Dict[Union[str, int], List[float]], output: Path, start_
     mad = np.median(np.absolute(depths_list - median))
 
 
+
+
     # Check for MAD == 0 to avoid division by zero
     if mad == 0:
         if expect_mad_zero is True:

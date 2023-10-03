@@ -129,3 +129,44 @@ def get_cov(output: Path, threads: int, logdir: Path) -> None:
 
     ExternalTool.run_tool(mosdepth)
 
+
+"""
+
+long
+
+"""
+
+
+def minimap_long(longreads: Path, genome: Path, output: Path, threads: int, logdir: Path) -> None:
+    """
+    Align paired-end sequencing reads to a reference genome using Minimap2.
+
+    Parameters:
+        longreads (Path): Path to the longreads input FASTQ files.
+        genome (Path): Path to the reference genome to align the reads against.
+        output (Path): Path to the output directory where the alignment results will be stored.
+        threads (int): Number of threads/cores to use for the alignment.
+        logdir (Path): Path to the directory where log files will be stored.
+
+    Returns:
+        None
+
+    This function uses Minimap2 to perform alignment of longreads  ('longreads')
+    against a reference genome ('genome'). The aligned output is stored in a SAM (Sequence Alignment/Map)
+    format file named "temp_minimap.sam" in the 'output' directory.
+
+    The 'threads' parameter specifies the number of CPU cores to use for the alignment, and 'logdir' is the
+    directory where log files for the alignment process will be stored.
+    """
+
+    out_sam: Path = output / "temp_minimap.sam"
+
+    minimap2 = ExternalTool(
+        tool="minimap2",
+        input=f"",
+        output=f"",
+        params=f'-ax map-ont {genome} {longreads}  -t {str(threads)} -o {out_sam} ',
+        logdir=logdir,
+    )
+        
+    ExternalTool.run_tool(minimap2)

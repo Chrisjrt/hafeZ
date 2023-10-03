@@ -210,7 +210,83 @@ class Premap:
 
 
              
-             
+    """
+    long
+    """
 
+
+    def calculate_estimated_coverage_long(self, longreads: Path) ->  None :
+        """
+        Calculate and estimate the predicted overall coverage based on input read files.
+
+        Parameters:
+            longreads (Path): Path to the longreads FASTQ file containing sequencing reads.
+
+
+        Returns:
+            None
+
+        This method calculates the estimated overall coverage of a genome based on the provided
+        input read file ('longreads' ). It first counts the total number of bases in
+        the input FASTQ files and then divides this total by the genome length to estimate the
+        coverage. The result is stored as the 'estimated_coverage' attribute of the object.
+        """
+
+        # calculate the coverage
+        
+
+        total_bases = count_bases_in_fastq(longreads)
+        estimated_coverage = total_bases / self.genome_length
+        self.estimated_coverage = estimated_coverage
+
+        
+
+    def subsample_long(self, longreads: Path, logdir: Path ) ->  Tuple[Path, Path] :
+        """
+        Subsample sequencing reads to achieve a target coverage if necessary.
+
+        Parameters:
+            longreads (Path): Path to the input FASTQ file containing the  sequencing reads.
+            logdir (Path): Path to the directory where log files will be stored.
+
+        Returns:
+            Tuple[Path, Path]: A tuple containing the paths to the subsampled first and second read files.
+
+        This method subsamples sequencing reads to achieve a target coverage if the estimated coverage
+        ('self.estimated_coverage') is greater than the desired coverage ('self.coverage'). It uses the
+        'rasusa' tool to perform subsampling. If the estimated coverage is less than or equal to the desired
+        coverage, no subsampling is performed, and the original read path is returned.
+
+        If subsampling is required, the subsampled read file is stored in the 'output' directory with names
+        "subsampled_long.fastq.gz", respectively.
+
+        Note: This method assumes that the 'rasusa' tool is available and properly configured.
+
+        """
+        
+        # set path of reads to be used later
+        # will be unchanged if no subsample
+        outreads: Path = self.output / "subsampled_long.fastq.gz"
+
+        # runs rasusa if sampling
+        if self.estimated_coverage > self.coverage:
+            logger.info(f"Estimated coverage {self.estimated_coverage:.2f}x is more than desired coverage ({self.coverage}x).")
+            logger.info(f"Subsampling with rasusa.")
+            rasusa = ExternalTool(
+            tool="rasusa",
+            input=f"",
+            output=f"",
+            params=f'-i {longreads} --coverage {str(self.coverage)} -s 13  --genome-size {str(self.genome_length)} -o {outreads}  -O G',
+            logdir=logdir,
+        )
+            
+            ExternalTool.run_tool(rasusa)
+
+        elif self.coverage > self.estimated_coverage:
+            logger.info(f"Estimated coverage {self.estimated_coverage:.2f} is less than desired coverage ({self.coverage}x).")
+            logger.info(f"Continuing with estimated coverage {self.estimated_coverage:.2f}")
+            outreads = longreads
+
+        return outreads
         
 

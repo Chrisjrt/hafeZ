@@ -7,3 +7,5 @@ stdin.hhr
 
 test_out/
 test_out/*
+test_out_long/
+test_out_long/*

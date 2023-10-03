@@ -64,7 +64,10 @@ class Haf:
             2: [4.0, 5.0, 6.0],
             'key3': [7.0, 8.0, 9.0],
         },
-        start_time = 0.0
+        start_time = 0.0,
+        sam_secondary_df: pd.DataFrame() = pd.DataFrame(
+            {"col1": [1, 2, 3], "col2": [4, 5, 6]}
+        ),
     ) -> None:
         """
         Parameters
@@ -97,6 +100,8 @@ class Haf:
             Dict containing depths
         start_time: float 
             start time
+        sam_secondary_df:  pd.DataFrame
+            dataframe containing SAM file outputvfor secondary alignments
         """
         self.roi_df = roi_df
         self.sam_df = sam_df
@@ -112,6 +117,7 @@ class Haf:
         self.output = output
         self.depths = depths
         self.start_time = start_time
+        self.sam_secondary_df = sam_secondary_df
 
 
 
@@ -1435,6 +1441,219 @@ class Haf:
             ]
         ]
 
+    """
+    long
+    """
+
+
+    def bamfile_to_pandas(self, output: Path, neighbourhood: int) -> None:
+        """
+        Parse and process a sorted BAM file into a Pandas DataFrame.
+
+        Parameters:
+            output (Path): The output folder where the SAM file is located.
+            neighbourhood (int): number of bases before and after the ROI
+        
+        Returns:
+            None
+
+        This method parses and processes a sorted BAM file into a Pandas DataFrame. It filters reads based on the ROIs provided
+        in 'self.roi_df', ensuring that only reads within the specified regions are included in the output DataFrame.
+        
+        """
+
+        sorted_bam: Path = output / "temp_minimap_sorted.bam"
+
+        bamfile = pysam.AlignmentFile(sorted_bam, "rb")
+
+        df_dict: Dict[str, list] = {
+            "qname": [],
+            "rname": [],
+            "pos": [],
+            "cigar": [],
+            "tlen": [],
+            "seq": [],
+            "flag": [],
+            "pnext": [],
+            "qqual": [],
+        }
+
+        for index, row in self.roi_df.iterrows():
+            contig = row["accession"].split("~")[0]
+            start = row["start"] - neighbourhood
+            if start < 0:
+                start = 0
+            end = row["end"] + neighbourhood
+            if end > row["contig_len"]:
+                end = row["contig_len"]
+            for reads in bamfile.fetch(contig, start, end):
+                df_dict["qname"].append(reads.query_name)
+                df_dict["rname"].append(contig)
+                df_dict["pos"].append(reads.reference_start)
+                df_dict["cigar"].append(reads.cigarstring)
+                df_dict["tlen"].append(reads.template_length)
+                df_dict["seq"].append(reads.query_sequence)
+                df_dict["flag"].append(reads.flag)
+                df_dict["pnext"].append(reads.next_reference_start)
+                df_dict["qqual"].append(reads.query_qualities.tolist())
+
+        df = pd.DataFrame.from_dict(df_dict)
+        df = df.drop_duplicates(
+            subset=["qname", "rname", "pos", "cigar", "tlen", "seq", "flag", "pnext"],
+            keep="first",
+        )
+        df["tlen"] = df["tlen"].astype(int)
+        df["pos"] = df["pos"].astype(int)
+
+        if df.empty:
+            exit_error_gracefully(self.output, self.all_zscores, self.depths, self.median, self.mad, self.start_time)
+            logger.error("No depth found at all positions.")
+
+        self.sam_df = df
+
+#### do i need the secondaries?
+
+    def bamfile_to_pandas_long(self, output: Path, neighbourhood: int) -> None:
+        """
+        Parse and process a sorted BAM file into a Pandas DataFrame for long reads
+
+        Parameters:
+            output (Path): The output folder where the SAM file is located.
+            neighbourhood (int): number of bases before and after the ROI
+        
+        Returns:
+            None
+
+        This method parses and processes a sorted BAM file into a Pandas DataFrame. It filters reads based on the ROIs provided
+        in 'self.roi_df', ensuring that only reads within the specified regions are included in the output DataFrame.
+        """
+
+        sorted_bam: Path = output / "temp_minimap_sorted.bam"
+
+        bamfile = pysam.AlignmentFile(sorted_bam, "rb")
+
+        df_dict: Dict[str, list] = {
+            'qname':[], 'rname':[], 'pos':[], 'cigar':[],'tlen':[],'seq':[],'flag':[],'pnext':[], 'qqual':[], 'reference_end':[], 'reference_start': []
+        }
+        df_dict_secondary: Dict[str, list] = {
+            'qname':[], 'rname':[], 'pos':[], 'cigar':[],'tlen':[],'seq':[],'flag':[],'pnext':[], 'qqual':[], 'reference_end':[], 'reference_start': []
+        }
+
+        primary_flags = [0, 16, 2048, 2064]
+        secondary_flags = [256, 272]
+        for index, row in self.roi_df.iterrows():
+            contig = row['accession'].split('~')[0]
+            start = row['start'] - neighbourhood
+            if start < 0:
+                start = 0
+            end = row['end'] + neighbourhood
+            if end > row['contig_len']:
+                end = row['contig_len']
+        # ONT reads - issue with non-primary alignments
+        # keep only 0 (mapped fwd) or 16 (mapped rev)
+            for reads in bamfile.fetch(contig, start, end):
+                if reads.flag in primary_flags: # keeps all the primary and supp reads
+                    df_dict['qname'].append(reads.query_name)
+                    df_dict['rname'].append(contig)
+                    df_dict['pos'].append(reads.reference_start)
+                    df_dict['cigar'].append(reads.cigarstring)
+                    df_dict['tlen'].append(reads.template_length)
+                    df_dict['seq'].append(reads.query_sequence)
+                    df_dict['flag'].append(reads.flag)
+                    df_dict['pnext'].append(reads.next_reference_start)
+                    df_dict['reference_end'].append(reads.reference_end)
+                    df_dict['reference_start'].append(reads.reference_start)
+                    df_dict['qqual'].append(reads.query_qualities.tolist())
+                elif reads.flag in primary_flags:
+                    df_dict_secondary['qname'].append(reads.query_name)
+                    df_dict_secondary['rname'].append(contig)
+                    df_dict_secondary['pos'].append(reads.reference_start)
+                    df_dict_secondary['cigar'].append(reads.cigarstring)
+                    df_dict_secondary['tlen'].append(reads.template_length)
+                    df_dict_secondary['seq'].append(reads.query_sequence)
+                    df_dict_secondary['flag'].append(reads.flag)
+                    df_dict_secondary['pnext'].append(reads.next_reference_start)
+                    df_dict_secondary['reference_end'].append(reads.reference_end)
+                    df_dict_secondary['reference_start'].append(reads.reference_start)
+                    df_dict_secondary['qqual'].append(reads.query_qualities.tolist())
+
+        df = pd.DataFrame.from_dict(df_dict)
+        df = df.drop_duplicates(subset = ['qname', 'rname', 'pos', 'cigar', 'tlen', 'seq', 'flag', 'pnext', 'reference_end', 'reference_start'], keep='first')
+        df['tlen'] = df['tlen'].astype(int)
+        df['pos'] = df['pos'].astype(int)
+
+        sam_secondary_df = pd.DataFrame.from_dict(df_dict_secondary)
+        sam_secondary_df = sam_secondary_df.drop_duplicates(subset = ['qname', 'rname', 'pos', 'cigar', 'tlen', 'seq', 'flag', 'pnext', 'reference_end', 'reference_start'], keep='first')
+        sam_secondary_df['tlen'] = sam_secondary_df['tlen'].astype(int)
+        sam_secondary_df['pos'] = sam_secondary_df['pos'].astype(int)
+
+        if df.empty:
+            exit_error_gracefully(self.output, self.all_zscores, self.depths, self.median, self.mad, self.start_time)
+            logger.error("No depth found at all positions.")
+        # not big a deal if secondary df empty
+        # if sam_secondary_df.empty: 
+        #     logger.warning("No secondary alignment depth found at all positions.")
+
+        self.sam_df = df
+        self.sam_secondary_df = sam_secondary_df
+
+ 
+    def find_multimapped_reads_long(self, neighbourhood: int, min_reads: int) -> None:
+        """
+        Identify ROIs with multiple mapped long reads that span both ends.
+
+        Args:
+            neighbourhood (int): The size of the neighbourhood around ROI start and end positions.
+            min_reads (int): The minimum number of long reads required to consider an ROI.
+
+        Returns:
+            None
+        """
+
+        # gets all the reads that have more than 1 primary or supplementary mapping
+        df = self.sam_df[self.sam_df.duplicated('qname', keep=False) == True]
+        # loop over each roi
+        for index, row in self.roi_df.iterrows():
+            center = row['center']
+            # gets all the reads in the vicinity of the start and end of the ROI
+            sub_df = df[(df['rname'] == row['contig']) &
+                        (((df['pos'].between(row['start'] - neighbourhood, center)) | (df['pnext'].between(center, row['end'] + neighbourhood))) |
+                        ((df['pnext'].between(row['start'] - neighbourhood, center)) | (df['pos'].between(center, row['end'] + neighbourhood))))].copy()
+            # keep only the dupes again 
+            sub_df = sub_df[sub_df.duplicated('qname', keep=False) == True]
+            # collect all starts and ends
+            # automatically sorts the list from largest to smalles
+            starts = sub_df['reference_start'].value_counts(dropna=False)
+            ends = sub_df['reference_end'].value_counts(dropna=False)
+            # Don't keep empty ones
+            if (len(sub_df)/2) < 1:
+                self.roi_df = self.roi_df[self.roi_df['accession'] != row['accession']].copy()
+            else:
+                # get the top hit
+                start_coverage = int(starts.iloc[0])
+                start_position = int(starts.index[0])
+                end_coverage = int(ends.iloc[0])
+                end_position = int(ends.index[0])
+                # need more than min_reads coverage at the start and end (default min_reads = 5)
+                # skips the row if there is less than 5 at either end
+                if start_coverage < min_reads or end_coverage < min_reads:
+                    self.roi_df = self.roi_df[self.roi_df['accession'] != row['accession']].copy()
+                else:
+                # denotes the read with likely_start and likely_end
+                    self.roi_df.loc[index,'likely_start'] = start_position
+                    self.roi_df.loc[index,'likely_end'] = end_position
+                    self.roi_df.loc[index,'start_count'] = start_coverage
+                    self.roi_df.loc[index,'end_count'] = end_coverage
+        if len(self.roi_df) < 1:
+            exit_error_gracefully(self.output, self.all_zscores, self.depths, self.median, self.mad, self.start_time)
+            logger.exit(f"No ROIs found with at least {min_reads} long reads that span both ends.")
+        else:
+            logger.info(f"{len(self.roi_df)} ROI(s) found with at least {min_reads} long reads that span both ends.")
+        # return the roi_df
+
+
+
+
 
 
 
@@ -1461,6 +1680,7 @@ def check_read_lengths(row, index, clip_df, side_name, names, side):
         "roi": [],
         "seq_len": [],
     }
+    
     start_list = np.core.defchararray.add(
         "{}~{}__".format(row["roi"], str(row["start_pos"])),
         np.arange(1, row["start_count"] + 1, 1).astype(int).astype(str),

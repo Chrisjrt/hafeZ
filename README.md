@@ -13,7 +13,7 @@ A tool for identifying inducible prophage elements through read mapping
 ## Bioconda
 
 ```
-conda env create --name hafeZ --file=environment.yml
+mamba create -n hafeZ -c conda-forge -c bioconda -c defaults hafez
 ```
 
 ## Source

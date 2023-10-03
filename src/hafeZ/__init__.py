@@ -20,7 +20,7 @@ from hafeZ.utils.mapping import (minimap_paired,get_bam, get_cov)
 
 from hafeZ.utils.exit import (exit_error_gracefully, exit_success)
 
-from hafeZ.utils.mapping_calcs import ( smooth_depths, get_ZScores)
+from hafeZ.utils.mapping_calcs import ( smooth_depths, plot_MAD_error_coverage, get_ZScores)
 
 from hafeZ.utils.process_rois import Haf
 
@@ -244,6 +244,11 @@ Chromosome command
     required=True
 )
 @common_options
+@click.option(
+        '--expect_mad_zero',
+        is_flag=True,
+        help = 'allow MAD == 0 to exit without non-zero exit code. Will also cause coverage plots for each contig to be output to help with debugging. Useful for uninduced lysates.'
+        )
 def short(
     ctx,
     genome, 
@@ -267,6 +272,7 @@ def short(
     all_zscores,
     min_contig_len,
     join_window,
+    expect_mad_zero,
     **kwargs
 ):
     """Runs hafeZ with paired end short reads"""
@@ -299,7 +305,7 @@ def short(
     "--memory_limit": memory_limit,
     "--all_zscores": all_zscores,
     "--min_contig_len": min_contig_len,
-    "--join_window": join_window
+    "--expect_mad_zero": expect_mad_zero
     }
 
     # initial logging and list all the params
@@ -365,8 +371,10 @@ def short(
     depths, cov = smooth_depths(
             output, bin_size, threads
         )
+
+
     # get Z scores 
-    zscores, median, mad = get_ZScores(depths, output, start_time)
+    zscores, median, mad = get_ZScores(depths, output, start_time, cov, expect_mad_zero )
 
     ########################
     # ROI 

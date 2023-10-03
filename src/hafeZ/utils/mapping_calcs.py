@@ -108,9 +108,31 @@ def smooth_depths(output: Path, bin_size: int, threads: int) -> Tuple[Dict[Union
     return smoothed_dict, raw_dict
 
 
+def plot_MAD_error_coverage(cov: Dict[Union[str, int], List[float]], output: Path) -> None:
+    """
+    Plot coverage depth for each contig and save the plots to the output directory.
+
+    Args:
+        cov (Dict[Union[str, int], List[float]]): A dictionary where keys are contig names or IDs,
+            and values are lists of coverage depth values.
+        output (Path): The path to the output directory where the plots will be saved.
+
+    Returns:
+        None
+    """
+    for i in cov:
+        depth_to_plot = cov[i]
+        fig = plt.gcf()
+        fig.set_size_inches(18.5, 10.5)
+        plt.plot(depth_to_plot)
+        plt.ylabel('Coverage depth')
+        plt.savefig(output / ('MAD_ERROR_coverage_plot_for_' + str(i) + '.png'), format='png')
+        plt.clf()
+    print('\n{:#^50}'.format(''))
 
 
-def get_ZScores(depths: Dict[Union[str, int], List[float]], output: Path, start_time: float) -> Tuple[Dict[Union[str, int], List[float]], float, float]:
+
+def get_ZScores(depths: Dict[Union[str, int], List[float]], output: Path, start_time: float, cov: Dict[Union[str, int], List[float]], expect_mad_zero: bool) -> Tuple[Dict[Union[str, int], List[float]], float, float]:
     """
     Calculate Z-scores for depth data.
 
@@ -118,6 +140,9 @@ def get_ZScores(depths: Dict[Union[str, int], List[float]], output: Path, start_
         depths (Dict[Union[str, int], List[float]]): A dictionary containing depth data for each contig or region.
         output (Path): output directory.
         start_time (float): start time.
+        cov (Dict[Union[str, int], List[float]]): A dictionary where keys are contig names or IDs,
+            and values are lists of coverage depth values.
+        expect_mad_zero (bool): Will also cause coverage plots for each contig to be output to help with debugging. Useful for uninduced lysates
 
     Returns:
         Tuple[Dict[Union[str, int], List[float]], float, float]: A tuple containing Z-scores for each contig/region,
@@ -148,9 +173,17 @@ def get_ZScores(depths: Dict[Union[str, int], List[float]], output: Path, start_
 
     # Check for MAD == 0 to avoid division by zero
     if mad == 0:
-        exit_error_gracefully_premap(output, start_time)
-        logger.error(
+        if expect_mad_zero is True:
+            plot_MAD_error_coverage(cov, output)
+            logger.warning(
             "This error is likely because the wrong reads being mapped to genome because the MAD == 0.\nPlease check you are using correct reads.\nIf error persists please create an issue on GitHub (https://github.com/Chrisjrt/hafeZ)."
+        )
+            exit_error_gracefully_premap(output, start_time)
+            sys.exit(0)
+        else:
+            exit_error_gracefully_premap(output, start_time)
+            logger.error(
+            "This error is likely because the wrong reads being mapped to genome because the MAD == 0.\n Use --expect_mad_zero to generate a MAD_ERROR_coverage_plot.\nPlease check you are using correct reads.\nIf error persists please create an issue on GitHub (https://github.com/Chrisjrt/hafeZ)."
         )
 
     # Calculate Z-scores for each contig/region

@@ -106,7 +106,7 @@ def begin_hafeZ(params):
 
     print_splash()
 
-    logger.add("Identify inducible prophages through bacterial genomic read mapping.")
+    logger.info("hafeZ: Identify inducible prophages through bacterial genomic read mapping.")
     logger.info(f"You are using hafeZ version {get_version()}")
     logger.info(f"Repository homepage is https://github.com/Chrisjrt/hafeZ.")
     logger.info(f"Listing parameters.")

@@ -28,4 +28,4 @@ badread simulate --reference C222.fasta  --quantity 0.5x  --error_model nanopore
 
 hafeZ short -g tests/test_data/short/C222.fasta -1 tests/test_data/short/combo_R1.fastq.gz -2 tests/test_data/short/combo_R2.fastq.gz -o test_out -t 8 -f -C 15 -S -d ../pharokka_v1.4.0_databases --all_zscores
 
-hafeZ long -g tests/test_data/long/C222.fasta -l tests/test_data/long/combo.fastq.gz -o test_out_long -t 8 -f -C 15 -S -d ../pharokka_v1.4.0_databases --all_zscores
+hafeZ long -g tests/test_data/long/C222.fasta -l tests/test_data/long/combo.fastq.gz -o test_out_long -t 8 -f -C 3.6 -S -d ../pharokka_v1.4.0_databases --all_zscores

@@ -66,37 +66,36 @@ def get_att(
     roi_df["attR_seq"] = ""
 
     for index, row in roi_df.iterrows():
-        if row["circular"] == True:
-            roi_df.loc[index, "attL_seq"] = np.nan
-            roi_df.loc[index, "attR_seq"] = np.nan
         if not pd.isna(row["contig_split"]):
             roi_df.loc[index, "attL_seq"] = np.nan
             roi_df.loc[index, "attR_seq"] = np.nan
+        if row["circular"] is True:
+            roi_df.loc[index, "attL_seq"] = np.nan
+            roi_df.loc[index, "attR_seq"] = np.nan
         else:
-            if row["circular"] != True:
-                left = filtered_seq_dict[row["contig"]][
-                    row["start_pos"] - 100 : row["start_pos"] + 100
-                ]
-                right = filtered_seq_dict[row["contig"]][
-                    row["end_pos"] - 100 : row["end_pos"] + 100
-                ]
+            left = filtered_seq_dict[row["contig"]][
+                row["start_pos"] - 100 : row["start_pos"] + 100
+            ]
+            right = filtered_seq_dict[row["contig"]][
+                row["end_pos"] - 100 : row["end_pos"] + 100
+            ]
 
-                left_area = SeqIO.SeqRecord(
-                    Seq(left),
-                    id=row["roi"],
-                    name="",
-                    description="",
-                )
+            left_area = SeqIO.SeqRecord(
+                Seq(left),
+                id=row["roi"],
+                name="",
+                description="",
+            )
 
-                right_area = SeqIO.SeqRecord(
-                    Seq(right),
-                    id=row["roi"],
-                    name="",
-                    description="",
-                )
+            right_area = SeqIO.SeqRecord(
+                Seq(right),
+                id=row["roi"],
+                name="",
+                description="",
+            )
 
-                left_list.append(left_area)
-                right_list.append(right_area)
+            left_list.append(left_area)
+            right_list.append(right_area)
     if len(left_list) > 0 and len(right_list) > 0:
         # write to file
         SeqIO.write(left_list, left_fasta, "fasta")

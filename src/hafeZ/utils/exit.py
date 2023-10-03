@@ -144,3 +144,10 @@ def clean_up(output: Path) -> None:
     """
     for temp_file in glob.glob(str(output) + "/temp*"):
         remove_file(temp_file)
+
+    remove_file(str(output) + "/attr_blast.txt")
+    remove_file(str(output) + "/subsampled_long.fastq.gz")
+    remove_file(str(output) + "/subsampled_R1.fastq.gz")
+    remove_file(str(output) + "/subsampled_R2.fastq.gz")
+
+    

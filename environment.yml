@@ -19,6 +19,7 @@ dependencies:
   - seaborn >0.11.1
   - just
   - poetry
+  - python >=3.8,<4.0
   - ripgrep
 
 

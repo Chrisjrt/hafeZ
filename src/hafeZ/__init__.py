@@ -2,8 +2,9 @@
 """dnaapler"""
 
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
+
 import click
 import numpy as np
 import pandas as pd
@@ -13,10 +14,7 @@ from hafeZ.utils.db import check_db_installation
 from hafeZ.utils.exit import exit_error_gracefully, exit_success
 from hafeZ.utils.extra_process_roi import quick_filter
 from hafeZ.utils.mapping import get_bam, get_cov, minimap_long, minimap_paired
-from hafeZ.utils.mapping_calcs import (
-    get_ZScores,
-    smooth_depths,
-)
+from hafeZ.utils.mapping_calcs import get_ZScores, smooth_depths
 from hafeZ.utils.orfs import (
     calc_phrogs_frac,
     extract_roi_orfs,
@@ -195,11 +193,11 @@ def common_options(func):
             show_default=True,
         ),
         click.option(
-        "-e",
-        "--expect_mad_zero",
-        is_flag=True,
-        help="allow MAD == 0 to exit without non-zero exit code. Will also cause coverage plots for each contig to be output to help with debugging. Useful for uninduced lysates.",
-    )
+            "-e",
+            "--expect_mad_zero",
+            is_flag=True,
+            help="allow MAD == 0 to exit without non-zero exit code. Will also cause coverage plots for each contig to be output to help with debugging. Useful for uninduced lysates.",
+        ),
     ]
     for option in reversed(options):
         func = option(func)
@@ -238,13 +236,13 @@ short command
 )
 @common_options
 @click.option(
-            "-k",
-            "--keep_threshold",
-            type=int,
-            default=50,
-            help="Threshold for number of best soft clip combinations to keep for each roi.",
-            show_default=True,
-        )
+    "-k",
+    "--keep_threshold",
+    type=int,
+    default=50,
+    help="Threshold for number of best soft clip combinations to keep for each roi.",
+    show_default=True,
+)
 def short(
     ctx,
     genome,
@@ -303,7 +301,7 @@ def short(
         "--all_zscores": all_zscores,
         "--min_contig_len": min_contig_len,
         "--expect_mad_zero": expect_mad_zero,
-        "--evalue": evalue
+        "--evalue": evalue,
     }
 
     # initial logging and list all the params
@@ -637,9 +635,8 @@ long command
     help="Minimum number of longreads that need to map to coordinates on both ends of an ROI to be classified as induced.",
     type=int,
     default=5,
-    show_default=True
+    show_default=True,
 )
-
 def long(
     ctx,
     genome,
@@ -696,7 +693,7 @@ def long(
         "--min_contig_len": min_contig_len,
         "--expect_mad_zero": expect_mad_zero,
         "--evalue": evalue,
-        "--min_reads": min_reads
+        "--min_reads": min_reads,
     }
 
     # initial logging and list all the params
@@ -909,8 +906,6 @@ def long(
     exit_success(output, start_time)
 
 
-
-
 """
 database command
 """
@@ -921,31 +916,32 @@ database command
 @click.version_option(get_version(), "--version", "-V")
 @click.pass_context
 @click.option(
-            "-d",
-            "--database",
-            help="Specific path to download and install the hafeZ database directory. Optional. ",
-            default=None,
-            show_default=True
-        )
-def database(
-    ctx,
-    database):
-        """Downloads and installs hafeZ database"""
-        logger.add(lambda _: sys.exit(1), level="ERROR")
-        # set defaultdefault
-        if database is None:
-            database = os.path.join(os.path.realpath(__file__), "../", "databases/")
-            # make the database includes recursive
+    "-d",
+    "--database",
+    help="Specific path to download and install the hafeZ database directory. Optional. ",
+    default=None,
+    show_default=True,
+)
+def database(ctx, database):
+    """Downloads and installs hafeZ database"""
+    logger.add(lambda _: sys.exit(1), level="ERROR")
+    # set defaultdefault
+    if database is None:
+        current_dir = os.path.dirname(os.path.realpath(__file__))
+        database = os.path.join(current_dir, "../", "databases/")
+        # make the database includes recursive
+        if not os.path.exists(database):
             os.makedirs(database)
 
-        # download the db
-        check_db_installation(database, install_flag=True)
+    # download the db
+    check_db_installation(database, install_flag=True)
 
 
 @click.command()
 def citation(**kwargs):
     """Print the citation for hafeZ"""
     print_citation()
+
 
 
 main_cli.add_command(short)

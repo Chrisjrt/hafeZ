@@ -149,5 +149,3 @@ def clean_up(output: Path) -> None:
     remove_file(str(output) + "/subsampled_long.fastq.gz")
     remove_file(str(output) + "/subsampled_R1.fastq.gz")
     remove_file(str(output) + "/subsampled_R2.fastq.gz")
-
-    

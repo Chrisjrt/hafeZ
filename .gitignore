@@ -9,6 +9,9 @@ src/hafeZ/tests/helpers/*
 src/hafeZ/tests/helpers/
 test_db/
 
+tests/test_data/database/
+src/databases/
+
 test_out/
 test_out/*
 test_out_long/

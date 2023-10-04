@@ -40,8 +40,7 @@ def check_db_installation(database: Path, install_flag: bool):
             file_path: Path = Path(database) / f"{file_name}"
             if file_path.exists() is False:
                 if install_flag is True:
-                    logger.info(
-                        f"Database directory is missing file {file_path}.")
+                    logger.info(f"Database directory is missing file {file_path}.")
                     get_database_zenodo(database)
                     break
                 else:
@@ -56,7 +55,6 @@ def get_database_zenodo(db_dir: Path):
     tar_path = Path(f"{db_dir}/{tarball}")
     db_url = "https://zenodo.org/record/8402631/files/hafeZ_v2.0.0_databases.tar.gz"
     requiredmd5 = "7b7d1d428e0b14b45c3b40495c6172bf"
-
 
     # remvoe the directory
     if os.path.exists(db_dir):
@@ -119,9 +117,7 @@ def untar(tarball_path: Path, output_path: Path):
             tar_file.extractall(path=str(output_path))
 
         # get untarred directory
-        untarpath = os.path.join(
-            output_path, "hafeZ_v2.0.0_databases"
-        )
+        untarpath = os.path.join(output_path, "hafeZ_v2.0.0_databases")
 
         # Get a list of all files in the source directory
         files_to_move = [
@@ -140,8 +136,3 @@ def untar(tarball_path: Path, output_path: Path):
 
     except OSError:
         logger.error(f"Could not extract {tarball_path} to {output_path}")
-
-
-
-
-

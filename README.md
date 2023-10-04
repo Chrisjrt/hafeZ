@@ -14,11 +14,11 @@ The easiest way to install hafeZ is via conda:
 
 `conda install -c bioconda hafeZ`
 
-Followed by database installation:
+Followed by database installation using:
 
 `hafeZ database`
 
-And finally running:
+And finally running hafeZ `short` or `long`:
 
 `hafeZ short -g genome.fasta -1 read_1.fastq.gz -2 read_2.fastq.gz -o output_folder -t <threads>`
 `hafeZ long -g genome.fasta -1 read_1.fastq.gz -2 read_2.fastq.gz -o output_folder -t <threads>`

@@ -7,15 +7,15 @@ Once `hafez database` has been run, hafeZ requires an input genome FASTA file an
 `hafez short` takes paired end short reads in both `.fastq` and `.fastq.gz` format. 
 
 ```
-hafeZ short -g genome.fasta -1 read_1.fastq.gz -2 read_2.fastq.gz -o output_folder 
+hafez short -g genome.fasta -1 read_1.fastq.gz -2 read_2.fastq.gz -o output_folder 
 ```
 
 A full list of parameters can be found below.
 
 ```
-Usage: hafeZ short [OPTIONS]
+Usage: hafez short [OPTIONS]
 
-  Runs hafeZ with paired end short reads
+  Runs hafez with paired end short reads
 
 Options:
   -h, --help                    Show this message and exit.

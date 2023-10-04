@@ -943,7 +943,6 @@ def citation(**kwargs):
     print_citation()
 
 
-
 main_cli.add_command(short)
 main_cli.add_command(long)
 main_cli.add_command(database)

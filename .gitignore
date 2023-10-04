@@ -5,6 +5,8 @@ hafeZ_db/
 stdin.hhr
 .DS_Store
 
+src/hafeZ.egg-info/
+
 src/hafeZ/tests/helpers/*
 src/hafeZ/tests/helpers/
 test_db/

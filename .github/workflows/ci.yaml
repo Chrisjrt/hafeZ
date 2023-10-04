@@ -36,14 +36,13 @@ jobs:
         shell: bash -l {0}
         run: |
           mamba install python=${{ matrix.python-version }}
-          just install
-      - name: Check formatting
-        shell: bash -l {0}
-        run: just check-fmt
-      - name: Test and generate coverage report with pytest
-        shell: bash -l {0}
-        run: just test-ci
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Run tests and collect coverage
+        run: pytest --cov=./ --cov-report=xml
       # - name: Upload coverage reports to Codecov
       #   uses: codecov/codecov-action@v3
+      #   env:
+      #     CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       
 

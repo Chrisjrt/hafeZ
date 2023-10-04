@@ -10,19 +10,19 @@ import numpy as np
 import pandas as pd
 from loguru import logger
 
-from hafez.utils.db import check_db_installation
-from hafez.utils.exit import exit_error_gracefully, exit_success
-from hafez.utils.extra_process_roi import quick_filter
-from hafez.utils.mapping import get_bam, get_cov, minimap_long, minimap_paired
-from hafez.utils.mapping_calcs import get_ZScores, smooth_depths
-from hafez.utils.orfs import (
+from hafeZ.utils.db import check_db_installation
+from hafeZ.utils.exit import exit_error_gracefully, exit_success
+from hafeZ.utils.extra_process_roi import quick_filter
+from hafeZ.utils.mapping import get_bam, get_cov, minimap_long, minimap_paired
+from hafeZ.utils.mapping_calcs import get_ZScores, smooth_depths
+from hafeZ.utils.orfs import (
     calc_phrogs_frac,
     extract_roi_orfs,
     get_orfs,
     get_roi_sequences,
     run_pyhmmer,
 )
-from hafez.utils.post_processing import (
+from hafeZ.utils.post_processing import (
     get_att,
     get_names,
     output_all_phrogs,
@@ -32,10 +32,10 @@ from hafez.utils.post_processing import (
     output_roi_seqs,
     output_roi_table,
 )
-from hafez.utils.premap import Premap
-from hafez.utils.process_rois import Haf
-from hafez.utils.util import begin_hafeZ, get_version, print_citation
-from hafez.utils.validation import (
+from hafeZ.utils.premap import Premap
+from hafeZ.utils.process_rois import Haf
+from hafeZ.utils.util import begin_hafeZ, get_version, print_citation
+from hafeZ.utils.validation import (
     check_dependencies,
     check_memory_limit,
     instantiate_dirs,
@@ -67,7 +67,7 @@ def common_options(func):
         click.option(
             "-o",
             "--output",
-            default="output_hafez",
+            default="output_hafeZ",
             show_default=True,
             type=click.Path(),
             help="Output directory path",
@@ -609,7 +609,7 @@ def short(
         logger.info("Making Z-score graphs.")
         output_contig_Z(depths, output, median, mad)
 
-    # exit hafez
+    # exit hafeZ
     exit_success(output, start_time)
 
 
@@ -663,7 +663,7 @@ def long(
     min_reads,
     **kwargs,
 ):
-    """Runs hafez with ONT long reads"""
+    """Runs hafeZ with ONT long reads"""
 
     # validates the directory  (need to before I start hafez or else no log file is written)
     instantiate_dirs(output, force)

@@ -1,52 +1,38 @@
-[tool.poetry]
-name = "hafez"
-version = "2.0.0" # change VERSION too
-description = "A tool for identifying active prophage elements through read mapping"
-authors = ["Christopher J. R. Turkington <chrisjrt1@gmail.com>", "George Bouras <george.bouras@adelaide.edu.au>"]
-license = "GPL-3"
-readme = "README.md"
-homepage = "https://github.com/Chrisjrt/hafeZ"
-repository = "https://github.com/Chrisjrt/hafeZ"
-keywords = ["phage", "bioinformatics"]
-include = [
-    "HISTORY.md"
-]
-
-[tool.poetry.scripts]
-hafez = 'hafez:main'
-
-[tool.poetry.dependencies]
-python = ">=3.8,<4.0"
-click = ">=8.0.0"
-loguru = ">=0.5.3"
-pyyaml = ">=6.0"
-pandas = ">=1.4.2"
-numpy = ">=1.20.1"
-pysam = ">=0.16.0.1"
-biopython = ">=1.76"
-pyrodigal = ">=3.0.0"
-matplotlib = ">=3.3.4"
-scipy = ">=1.6.2"
-seaborn = ">=0.11.1"
-pyhmmer = ">=0.10.0"
-alive-progress = ">=3.0.1"
-requests = ">=2.25.1"
-
-[tool.poetry.dev-dependencies]
-black = ">=22.3.0"
-isort = ">=5.10.1"
-pytest = ">=6.2.5"
-pytest-cov = ">=3.0.0"
-flake8 = ">=3.0.1"
-
-[[tool.poetry.source]]
-name = "pypi-test"
-url = "https://test.pypi.org/simple/"
-priority = "primary"
+# https://github.com/python-poetry/poetry/issues/1538
+# cant use poetry
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
 
-[tool.isort]
-profile = "black"
+[project]
+name = "hafeZ"
+version = "2.0.0" # change VERSION too
+description = "A tool for identifying active prophage elements through read mapping"
+authors = [ {name = "Christopher J. R. Turkington", email =  "chrisjrt1@gmail.com"}, 
+            {name = "George Bouras", email = "george.bouras@adelaide.edu.au" }]
+license = {text = "GPL-3"} 
+readme = "README.md"
+keywords = ["phage", "bioinformatics"]
+
+dependencies = [
+    "click >=8.0.0",
+    "loguru >=0.5.3",
+    "pyyaml >=6.0",
+    "pandas >=1.4.2",
+    "numpy >=1.20.1",
+    "pysam >=0.16.0.1",
+    "biopython >=1.76",
+    "pyrodigal >=3.0.0",
+    "matplotlib >=3.3.4",
+    "scipy >=1.6.2",
+    "seaborn >=0.11.1",
+    "pyhmmer >=0.10.0",
+    "alive-progress >=3.0.1",
+    "requests >=2.25.1",
+    "pytest >=6.2.5",
+    "pytest-cov >=3.0.0"
+]
+
+[project.scripts]
+hafeZ = 'hafeZ:main'

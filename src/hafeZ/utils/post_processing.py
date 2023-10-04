@@ -14,7 +14,7 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from loguru import logger
 
-from hafez.utils.external_tools import ExternalTool
+from hafeZ.utils.external_tools import ExternalTool
 
 
 def get_names(roi_df: pd.DataFrame) -> pd.DataFrame:

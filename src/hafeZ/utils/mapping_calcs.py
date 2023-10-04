@@ -14,7 +14,7 @@ from pandas import DataFrame
 from scipy.signal import find_peaks, savgol_filter
 from scipy.stats import zscore
 
-from hafez.utils.exit import exit_error_gracefully_premap
+from hafeZ.utils.exit import exit_error_gracefully_premap
 
 
 def savgol(df: DataFrame, bin_size: int) -> List[Dict[Union[str, int], List[float]]]:

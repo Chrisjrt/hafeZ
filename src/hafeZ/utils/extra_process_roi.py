@@ -25,8 +25,8 @@ from Bio.SeqRecord import SeqRecord
 from loguru import logger
 from scipy import stats
 
-from hafez.utils.external_tools import ExternalTool
-from hafez.utils.util import split_df_for_multiproc
+from hafeZ.utils.external_tools import ExternalTool
+from hafeZ.utils.util import split_df_for_multiproc
 
 
 def quick_filter(roi_df: pd.DataFrame) -> pd.DataFrame:

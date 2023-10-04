@@ -18,7 +18,7 @@ import requests
 from alive_progress import alive_bar
 from loguru import logger
 
-from hafez.utils.util import remove_directory
+from hafeZ.utils.util import remove_directory
 
 
 def check_db_installation(database: Path, install_flag: bool):
@@ -45,7 +45,7 @@ def check_db_installation(database: Path, install_flag: bool):
                     break
                 else:
                     logger.error(
-                        f"Database directory is missing {file_path}. hafeZ database needs to be downloaded using the hafez download command."
+                        f"Database directory is missing {file_path}. hafeZ database needs to be downloaded using the hafeZ download command."
                     )
 
 

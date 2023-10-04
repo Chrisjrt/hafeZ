@@ -1,5 +1,6 @@
 # https://github.com/python-poetry/poetry/issues/1538
 # cant use poetry
+# https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
 
 [build-system]
 requires = ["setuptools", "setuptools-scm"]

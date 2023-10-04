@@ -6,7 +6,6 @@ Usage: pytest .
 
 """
 
-# import
 import os
 import shutil
 
@@ -20,9 +19,11 @@ from unittest.mock import patch
 import pytest
 from loguru import logger
 
-from src.hafeZ.utils.util import remove_directory
 
 # import functions
+def remove_directory(dir_path):
+    if os.path.exists(dir_path):
+        shutil.rmtree(dir_path)
 
 
 # test data

@@ -20,7 +20,7 @@ from unittest.mock import patch
 import pytest
 from loguru import logger
 
-from hafeZ.utils.util import remove_directory
+from src.hafeZ.utils.util import remove_directory
 
 # import functions
 

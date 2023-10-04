@@ -5,6 +5,10 @@ hafeZ_db/
 stdin.hhr
 .DS_Store
 
+src/hafeZ/tests/helpers/*
+src/hafeZ/tests/helpers/
+test_db/
+
 test_out/
 test_out/*
 test_out_long/

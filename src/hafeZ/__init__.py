@@ -2,9 +2,8 @@
 """dnaapler"""
 
 import os
-import shutil
 from pathlib import Path
-
+import sys
 import click
 import numpy as np
 import pandas as pd
@@ -16,7 +15,6 @@ from hafeZ.utils.extra_process_roi import quick_filter
 from hafeZ.utils.mapping import get_bam, get_cov, minimap_long, minimap_paired
 from hafeZ.utils.mapping_calcs import (
     get_ZScores,
-    plot_MAD_error_coverage,
     smooth_depths,
 )
 from hafeZ.utils.orfs import (
@@ -130,7 +128,7 @@ def common_options(func):
             "--phrog_fract",
             type=float,
             default=0.1,
-            help="Minimum  fraction number of ORFs needed in an RoI with PHROG hit.",
+            help="Minimum fraction number of ORFs needed in an RoI with PHROG hit.",
             show_default=True,
         ),
         click.option(
@@ -139,14 +137,6 @@ def common_options(func):
             type=float,
             default=3.5,
             help="Median Z-score for an roi to be retained.",
-            show_default=True,
-        ),
-        click.option(
-            "-k",
-            "--keep_threshold",
-            type=int,
-            default=50,
-            help="Threshold for number of best soft clip combinations to keep for each roi.",
             show_default=True,
         ),
         click.option(
@@ -197,6 +187,19 @@ def common_options(func):
             help="Minimum window within which 2 ROIs will be merged.",
             show_default=True,
         ),
+        click.option(
+            "--evalue",
+            type=float,
+            default=0.001,
+            help="Evalue threshold for significant PyHMMER hits.",
+            show_default=True,
+        ),
+        click.option(
+        "-e",
+        "--expect_mad_zero",
+        is_flag=True,
+        help="allow MAD == 0 to exit without non-zero exit code. Will also cause coverage plots for each contig to be output to help with debugging. Useful for uninduced lysates.",
+    )
     ]
     for option in reversed(options):
         func = option(func)
@@ -235,10 +238,13 @@ short command
 )
 @common_options
 @click.option(
-    "--expect_mad_zero",
-    is_flag=True,
-    help="allow MAD == 0 to exit without non-zero exit code. Will also cause coverage plots for each contig to be output to help with debugging. Useful for uninduced lysates.",
-)
+            "-k",
+            "--keep_threshold",
+            type=int,
+            default=50,
+            help="Threshold for number of best soft clip combinations to keep for each roi.",
+            show_default=True,
+        )
 def short(
     ctx,
     genome,
@@ -263,6 +269,7 @@ def short(
     min_contig_len,
     join_window,
     expect_mad_zero,
+    evalue,
     **kwargs,
 ):
     """Runs hafeZ with paired end short reads"""
@@ -296,6 +303,7 @@ def short(
         "--all_zscores": all_zscores,
         "--min_contig_len": min_contig_len,
         "--expect_mad_zero": expect_mad_zero,
+        "--evalue": evalue
     }
 
     # initial logging and list all the params
@@ -309,7 +317,7 @@ def short(
 
     # checks database installation
     logger.info(f"Checking database installation at {database}.")
-    # check_db_installation(database, install_flag=False)
+    check_db_installation(database, install_flag=False)
 
     logger.info(f"Checking memory limit of {memory_limit}.")
     check_memory_limit(memory_limit)
@@ -625,10 +633,13 @@ long command
 )
 @common_options
 @click.option(
-    "--expect_mad_zero",
-    is_flag=True,
-    help="allow MAD == 0 to exit without non-zero exit code. Will also cause coverage plots for each contig to be output to help with debugging. Useful for uninduced lysates.",
+    "--min_reads",
+    help="Minimum number of longreads that need to map to coordinates on both ends of an ROI to be classified as induced.",
+    type=int,
+    default=5,
+    show_default=True
 )
+
 def long(
     ctx,
     genome,
@@ -643,7 +654,6 @@ def long(
     min_orfs,
     phrog_fract,
     median_z_cutoff,
-    keep_threshold,
     sub_sample,
     coverage,
     no_extra,
@@ -652,6 +662,8 @@ def long(
     min_contig_len,
     join_window,
     expect_mad_zero,
+    evalue,
+    min_reads,
     **kwargs,
 ):
     """Runs hafeZ with ONT long reads"""
@@ -676,7 +688,6 @@ def long(
         "--min_orfs": min_orfs,
         "--phrog_fract": phrog_fract,
         "--median_z_cutoff": median_z_cutoff,
-        "--keep_threshold": keep_threshold,
         "--sub_sample": sub_sample,
         "--coverage": coverage,
         "--no_extra": no_extra,
@@ -684,6 +695,8 @@ def long(
         "--all_zscores": all_zscores,
         "--min_contig_len": min_contig_len,
         "--expect_mad_zero": expect_mad_zero,
+        "--evalue": evalue,
+        "--min_reads": min_reads
     }
 
     # initial logging and list all the params
@@ -697,7 +710,7 @@ def long(
 
     # checks database installation
     logger.info(f"Checking database installation at {database}.")
-    # check_db_installation(database, install_flag=False)
+    check_db_installation(database, install_flag=False)
 
     logger.info(f"Checking memory limit of {memory_limit}.")
     check_memory_limit(memory_limit)
@@ -837,9 +850,6 @@ def long(
 
     #### Screen all roi orfs vs phrogs db with pyhmmer ####
 
-    evalue = 0.001
-    evalue = 1.258e-60
-
     logger.info("Running PyHMMER on PHROGs.")
     best_phrog_results_dict = run_pyhmmer(database, output, threads, evalue=evalue)
 
@@ -899,14 +909,48 @@ def long(
     exit_success(output, start_time)
 
 
+
+
+"""
+database command
+"""
+
+
+@main_cli.command()
+@click.help_option("--help", "-h")
+@click.version_option(get_version(), "--version", "-V")
+@click.pass_context
+@click.option(
+            "-d",
+            "--database",
+            help="Specific path to download and install the hafeZ database directory. Optional. ",
+            default=None,
+            show_default=True
+        )
+def database(
+    ctx,
+    database):
+        """Downloads and installs hafeZ database"""
+        logger.add(lambda _: sys.exit(1), level="ERROR")
+        # set defaultdefault
+        if database is None:
+            database = os.path.join(os.path.realpath(__file__), "../", "databases/")
+            # make the database includes recursive
+            os.makedirs(database)
+
+        # download the db
+        check_db_installation(database, install_flag=True)
+
+
 @click.command()
 def citation(**kwargs):
-    """Print the citation(s) for hafeZ"""
+    """Print the citation for hafeZ"""
     print_citation()
 
 
 main_cli.add_command(short)
 main_cli.add_command(long)
+main_cli.add_command(database)
 main_cli.add_command(citation)
 
 

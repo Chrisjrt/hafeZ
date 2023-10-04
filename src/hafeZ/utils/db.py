@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """
 taken from plassembler (and therefore partially from bakta)
+
+to tar DBs
+export GZIP=-9
+tar cvzf hafeZ_v2.0.0_databases.tar.gz hafeZ_v2.0.0_databases
+
 """
 
 import hashlib
@@ -16,7 +21,7 @@ from loguru import logger
 from hafeZ.utils.util import remove_directory
 
 
-def check_db_installation(db_dir: Path, install_flag: bool):
+def check_db_installation(database: Path, install_flag: bool):
     """checks database is installed correctly
     :param db_dir: database directory
     :param install_flag: whether to check or install database
@@ -25,20 +30,19 @@ def check_db_installation(db_dir: Path, install_flag: bool):
 
     phrog_db_names = ["all_phrogs.h3m", "phrog_annot_v4.tsv"]
 
-    f1: Path = db_dir / f"{phrog_db_names[0]}"
-    f2: Path = db_dir / f"{phrog_db_names[1]}"
+    f1: Path = Path(database) / f"{phrog_db_names[0]}"
+    f2: Path = Path(database) / f"{phrog_db_names[1]}"
 
     if f1.exists() and f2.exists():
-        logger.info(f"hafeZ Database at {db_dir} has already been downloaded.")
+        logger.info(f"hafeZ Database at {database} has already been downloaded.")
     else:
         for file_name in phrog_db_names:
-            file_path: Path = db_dir / f"{file_name}"
+            file_path: Path = Path(database) / f"{file_name}"
             if file_path.exists() is False:
                 if install_flag is True:
                     logger.info(
-                        f"Database directory is missing file {file_path}. hafeZ Database will be downloaded."
-                    )
-                    get_database_zenodo(db_dir)
+                        f"Database directory is missing file {file_path}.")
+                    get_database_zenodo(database)
                     break
                 else:
                     logger.error(
@@ -50,8 +54,9 @@ def get_database_zenodo(db_dir: Path):
     logger.info("Downloading hafeZ Database.")
     tarball = "hafeZ_v2.0.0_databases.tar.gz"
     tar_path = Path(f"{db_dir}/{tarball}")
-    db_url = "https://zenodo.org/record/7499200/files/plsdb_110222_plassembler_v0.1.4_databases.tar.gz"
-    requiredmd5 = "f5144045e6e5d0d5a6b7f78d0c08840d"
+    db_url = "https://zenodo.org/record/8402631/files/hafeZ_v2.0.0_databases.tar.gz"
+    requiredmd5 = "7b7d1d428e0b14b45c3b40495c6172bf"
+
 
     # remvoe the directory
     if os.path.exists(db_dir):
@@ -87,7 +92,7 @@ def get_database_zenodo(db_dir: Path):
     logger.info(f"Extracting DB tarball: file={tar_path}, output={db_dir}")
     untar(tar_path, db_dir)
     tar_path.unlink()
-    logger.info(f"Plassembler Database download into {db_dir} successful.")
+    logger.info(f"hafeZ Database download into {db_dir} successful.")
 
 
 def calc_md5_sum(tarball_path: Path, buffer_size: int = 1024 * 1024) -> str:
@@ -115,7 +120,7 @@ def untar(tarball_path: Path, output_path: Path):
 
         # get untarred directory
         untarpath = os.path.join(
-            output_path, "plsdb_110222_plassembler_v0.1.4_databases"
+            output_path, "hafeZ_v2.0.0_databases"
         )
 
         # Get a list of all files in the source directory
@@ -135,3 +140,8 @@ def untar(tarball_path: Path, output_path: Path):
 
     except OSError:
         logger.error(f"Could not extract {tarball_path} to {output_path}")
+
+
+
+
+

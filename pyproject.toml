@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "hafeZ"
+name = "hafez"
 version = "2.0.0" # change VERSION too
 description = "A tool for identifying active prophage elements through read mapping"
 authors = ["Christopher J. R. Turkington <chrisjrt1@gmail.com>", "George Bouras <george.bouras@adelaide.edu.au>"]
@@ -13,7 +13,7 @@ include = [
 ]
 
 [tool.poetry.scripts]
-hafeZ = 'hafeZ:main'
+hafez = 'hafez:main'
 
 [tool.poetry.dependencies]
 python = ">=3.8,<4.0"

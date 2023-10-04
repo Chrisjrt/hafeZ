@@ -14,9 +14,9 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from loguru import logger
 
-from hafeZ.utils.external_tools import ExternalTool
-from hafeZ.utils.post_processing import output_contig_Z
-from hafeZ.utils.util import remove_file
+from hafez.utils.external_tools import ExternalTool
+from hafez.utils.post_processing import output_contig_Z
+from hafez.utils.util import remove_file
 
 
 def exit_error_gracefully(

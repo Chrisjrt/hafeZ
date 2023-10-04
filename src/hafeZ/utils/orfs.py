@@ -19,7 +19,7 @@ from loguru import logger
 from pyhmmer.easel import Alphabet, SequenceFile
 from pyhmmer.plan7 import HMM, HMMFile
 
-from hafeZ.utils.exit import exit_error_gracefully
+from hafez.utils.exit import exit_error_gracefully
 
 
 def get_roi_sequences(

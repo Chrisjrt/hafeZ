@@ -12,16 +12,16 @@ A tool for identifying inducible prophage elements through read mapping
 
 The easiest way to install hafeZ is via conda:
 
-`conda install -c bioconda hafeZ`
+`conda install -c bioconda hafez`
 
 Followed by database installation using:
 
-`hafeZ database`
+`hafez database`
 
-And finally running hafeZ `short` or `long`:
+And finally running  `hafez short` or `hafez long`:
 
-`hafeZ short -g genome.fasta -1 read_1.fastq.gz -2 read_2.fastq.gz -o output_folder -t <threads>`
-`hafeZ long -g genome.fasta -1 read_1.fastq.gz -2 read_2.fastq.gz -o output_folder -t <threads>`
+`hafez short -g genome.fasta -1 read_1.fastq.gz -2 read_2.fastq.gz -o output_folder -t <threads>`
+`hafez long -g genome.fasta -1 read_1.fastq.gz -2 read_2.fastq.gz -o output_folder -t <threads>`
 
 
 # Table of Contents
@@ -57,7 +57,7 @@ mamba create -n hafeZ -c conda-forge -c bioconda -c defaults hafez
 git clone "https://github.com/Chrisjrt/hafeZ.git"
 cd hafeZ
 pip install -e .
-hafeZ -h
+hafez -h
 ```
 
 If installing from source, hafeZ requires the following dependencies to also be installed:
@@ -91,7 +91,7 @@ If installing from source, hafeZ requires the following dependencies to also be 
 To access the help menu use the `-h` option:
 
 ```
-Usage: hafeZ [OPTIONS] COMMAND [ARGS]...
+Usage: hafez [OPTIONS] COMMAND [ARGS]...
 
 Options:
   -h, --help     Show this message and exit.
@@ -110,29 +110,29 @@ Commands:
 hafeZ uses the PHROGs HMM database. It can be downloaded and installed to the default location using
 
 ```
-hafeZ database
+hafez database
 ```
 
 If you want to specify a specific directory to install the database, use `-d`
 
 ```
-hafeZ database -d <database directory>
+hafez database -d <database directory>
 ```
 
 ## Short Reads
 
-`hafeZ short` takes paired end short reads in both `.fastq` and `.fastq.gz` format. 
+`hafez short` takes paired end short reads in both `.fastq` and `.fastq.gz` format. 
 
 ```
-hafeZ short -g genome.fasta -1 read_1.fastq.gz -2 read_2.fastq.gz -o output_folder 
+hafez short -g genome.fasta -1 read_1.fastq.gz -2 read_2.fastq.gz -o output_folder 
 ```
 
 A full list of parameters can be found below.
 
 ```
-Usage: hafeZ short [OPTIONS]
+Usage: hafez short [OPTIONS]
 
-  Runs hafeZ with paired end short reads
+  Runs hafez with paired end short reads
 
 Options:
   -h, --help                    Show this message and exit.
@@ -198,18 +198,18 @@ Options:
 
 ## Long Reads
 
-`hafeZ long` takes single end (ONT) long reads in both `.fastq` and `.fastq.gz` format. 
+`hafez long` takes single end (ONT) long reads in both `.fastq` and `.fastq.gz` format. 
 
 ```
-hafeZ long -g genome.fasta -l longreads.fastq.gz -o output_folder 
+hafez long -g genome.fasta -l longreads.fastq.gz -o output_folder 
 ```
 
 A full list of parameters can be found below.
 
 ```
-Usage: hafeZ long [OPTIONS]
+Usage: hafez long [OPTIONS]
 
-  Runs hafeZ with ONT long reads
+  Runs hafez with ONT long reads
 
 Options:
   -h, --help                   Show this message and exit.
@@ -284,7 +284,7 @@ wget -P test/ ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR455/005/ERR4552545/ERR455254
 wget -P test/ https://www.ebi.ac.uk/ena/browser/api/fasta/CP015406.2?download=true
 mv test/CP015406.2?download=true test/CP015406.2.fasta
 # assuming you have the database installed and the environment set up
-hafeZ short -r1 test/ERR4552545_1.fastq.gz -r2 test/ERR4552545_2.fastq.gz -o test/output -g test/CP015406.2.fasta -t 8 
+hafez short -r1 test/ERR4552545_1.fastq.gz -r2 test/ERR4552545_2.fastq.gz -o test/output -g test/CP015406.2.fasta -t 8 
 ```
 
 ## Outputs

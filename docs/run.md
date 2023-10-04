@@ -1,10 +1,10 @@
 # Running hafeZ
 
-Once `hafeZ database` has been run, hafeZ requires an input genome FASTA file and sequencing read FASTQ files(s). An output directory can be specified using -o. Otherwise, an `output/` directory will be created in your current working directory.
+Once `hafez database` has been run, hafeZ requires an input genome FASTA file and sequencing read FASTQ files(s). An output directory can be specified using -o. Otherwise, an `output/` directory will be created in your current working directory.
 
 ## Short Reads
 
-`hafeZ short` takes paired end short reads in both `.fastq` and `.fastq.gz` format. 
+`hafez short` takes paired end short reads in both `.fastq` and `.fastq.gz` format. 
 
 ```
 hafeZ short -g genome.fasta -1 read_1.fastq.gz -2 read_2.fastq.gz -o output_folder 

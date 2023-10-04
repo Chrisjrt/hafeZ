@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from hafeZ.utils.external_tools import ExternalTool
+from hafez.utils.external_tools import ExternalTool
 
 
 def minimap_paired(

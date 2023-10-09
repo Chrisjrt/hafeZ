@@ -45,7 +45,7 @@ def check_db_installation(database: Path, install_flag: bool):
                     break
                 else:
                     logger.error(
-                        f"Database directory is missing {file_path}. hafeZ database needs to be downloaded using the hafeZ download command."
+                        f"Database directory is missing {file_path}. hafeZ database needs to be downloaded using the hafeZ database command."
                     )
 
 

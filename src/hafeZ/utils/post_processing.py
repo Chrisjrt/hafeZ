@@ -366,6 +366,7 @@ def output_roi_orfs(
 
 def output_contig_Z(depths, output, median, mad):
     matplotlib.use("Agg")
+    
     for i in depths:
         z = [((0.6745 * (x - median)) / mad) for x in depths[i]]
         fig = plt.gcf()
@@ -378,34 +379,45 @@ def output_contig_Z(depths, output, median, mad):
         plt.clf()
 
 
-def output_roi_table(roi_df: pd.DataFrame, output: Path) -> None:
+def output_roi_table(roi_df: pd.DataFrame, output: Path, depths: dict) -> None:
     """
     Generate and save a summary table for regions of interest (ROIs).
 
     Args:
         roi_df (pd.DataFrame): A DataFrame containing ROI data.
         output (Path): The directory where the summary table will be saved.
+        depths (dict): Dictionary of coverage depths for each contig.
 
     Returns:
         None
     """
+
     for index, row in roi_df.iterrows():
+        i = row['contig']
         if row["circular"] == False:
             roi_df.loc[index, "roi_length"] = row["end_pos"] - row["start_pos"] + 1
+            depth = np.mean(depths[i][(row["start_pos"]-1):(row["end_pos"] - 1)])
         elif (row["circular"] == True) & (row["roi"].split("_")[-1] == "c1"):
             if row["start_pos"] > row["end_pos"]:
                 len_1 = row["contig_len"] - row["start_pos"]
                 len_2 = row["end_pos"] - 0
+                depth = np.mean(np.concatenate([depths[i][row["start_pos"]-1:(row["contig_len"]-1)], depths[i][0:row["end_pos"]-1]]))
                 roi_df.loc[index, "roi_length"] = len_1 + len_2
             else:
+                depth = np.mean(depths[i][(row["start_pos"]-1):(row["end_pos"] - 1)])
                 roi_df.loc[index, "roi_length"] = row["end_pos"] - row["start_pos"] + 1
         elif (row["circular"] == True) & (row["roi"].split("_")[-1] == "c2"):
             if row["start_pos"] > row["end_pos"]:
                 roi_df.loc[index, "roi_length"] = row["end_pos"] - row["start_pos"] + 1
+                depth = np.mean(np.concatenate([depths[i][row["start_pos"]-1:(row["contig_len"]-1)], depths[i][0:row["end_pos"]-1]]))
             else:
                 len_1 = row["contig_len"] - row["start_pos"]
                 len_2 = row["end_pos"] - 0
                 roi_df.loc[index, "roi_length"] = len_1 + len_2
+                depth = np.mean(depths[i][(row["start_pos"]-1):(row["end_pos"] - 1)])
+        
+        # set depth
+        roi_df.loc[index, "depth"] = depth
 
     roi_df = roi_df[
         [
@@ -420,6 +432,7 @@ def output_roi_table(roi_df: pd.DataFrame, output: Path) -> None:
             "circular",
             "attL_seq",
             "attR_seq",
+            "depth"
         ]
     ].copy()
     roi_df.columns = [
@@ -434,6 +447,7 @@ def output_roi_table(roi_df: pd.DataFrame, output: Path) -> None:
         "circular",
         "attL_seq",
         "attR_seq",
+        "depth"
     ]
     for index, row in roi_df.iterrows():
         roi_df.loc[index, "start_pos"] = row["start_pos"] + 1

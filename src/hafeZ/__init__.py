@@ -598,7 +598,7 @@ def short(
 
     #### output summary table of rois found ####
     logger.info("Writing ROI summary table.")
-    output_roi_table(roi_df, output)
+    output_roi_table(roi_df, output, depths)
 
     # output roi orf aa and dna sequences
     logger.info("Writing ROI AA and DNA sequences.")
@@ -891,7 +891,7 @@ def long(
 
     #### output summary table of rois found ####
     logger.info("Writing ROI summary table.")
-    output_roi_table(roi_df, output)
+    output_roi_table(roi_df, output, depths)
 
     # output roi orf aa and dna sequences
     logger.info("Writing ROI AA and DNA sequences.")

@@ -12,7 +12,7 @@ A tool for identifying inducible prophage elements through read mapping
 
 The easiest way to install hafeZ is via conda:
 
-`conda install -c bioconda hafeZ`
+`conda install -c bioconda hafez`
 
 Followed by database installation using:
 

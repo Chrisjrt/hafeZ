@@ -417,7 +417,7 @@ def output_roi_table(roi_df: pd.DataFrame, output: Path, depths: dict) -> None:
                 depth = np.mean(depths[i][(row["start_pos"]-1):(row["end_pos"] - 1)])
         
         # set depth
-        roi_df.loc[index, "depth"] = depth
+        roi_df.loc[index, "mean_depth"] = depth
 
     roi_df = roi_df[
         [
@@ -432,7 +432,7 @@ def output_roi_table(roi_df: pd.DataFrame, output: Path, depths: dict) -> None:
             "circular",
             "attL_seq",
             "attR_seq",
-            "depth"
+            "mean_depth"
         ]
     ].copy()
     roi_df.columns = [
@@ -447,7 +447,7 @@ def output_roi_table(roi_df: pd.DataFrame, output: Path, depths: dict) -> None:
         "circular",
         "attL_seq",
         "attR_seq",
-        "depth"
+        "mean_depth"
     ]
     for index, row in roi_df.iterrows():
         roi_df.loc[index, "start_pos"] = row["start_pos"] + 1
